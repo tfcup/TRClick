@@ -67,7 +67,7 @@ Download the `.dmg`, open it, and drag **RClick** to your Applications folder.
 ```bash
 git clone https://github.com/wflixu/RClick.git
 cd RClick
-open RClick.xcodeproj
+open TRClick.xcodeproj
 ```
 
 - Requires **Xcode 26+** and **macOS 15.6+**
@@ -86,10 +86,10 @@ open RClick.xcodeproj
 
 ```bash
 # Build
-xcodebuild -project RClick.xcodeproj -scheme RClick -destination 'platform=macOS'
+xcodebuild -project TRClick.xcodeproj -scheme TRClick -destination 'platform=macOS'
 
 # Build for Release
-xcodebuild -project RClick.xcodeproj -scheme RClick -configuration Release
+xcodebuild -project TRClick.xcodeproj -scheme TRClick -configuration Release
 ```
 
 ### Key Technologies

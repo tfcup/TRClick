@@ -1,6 +1,6 @@
 //
 //  RCBase.swift
-//  RClick
+//  TRClick
 //
 //  Created by 李旭 on 2024/9/26.
 //
@@ -86,106 +86,6 @@ extension OpenWithApp {
     }
 }
 
-
-// MARK: - Common Directory Icon Resolution
-
-/// 根据目录路径返回对应的 SF Symbol 图标名称
-/// 优先使用直接的路径拼接比较（不受 iCloud 重定向影响），FileManager API 作为补充
-nonisolated func iconForDirectory(url: URL) -> String {
-    let resolvedPath = url.resolvingSymlinksInPath().path
-    let fm = FileManager.default
-    let home = fm.homeDirectoryForCurrentUser
-
-    // 第一优先级：用户主目录下的标准子目录（直接路径拼接，不受 iCloud 影响）
-    let userDirs: [(String, String)] = [
-        ("Desktop", "desktopcomputer"),
-        ("Documents", "doc"),
-        ("Downloads", "arrow.down.circle"),
-        ("Pictures", "photo"),
-        ("Music", "music.note"),
-        ("Movies", "film"),
-        ("Library", "books.vertical"),
-        ("Public", "person.2"),
-        ("Sites", "globe"),
-        ("Applications", "square.grid.2x2"),
-    ]
-
-    for (subPath, icon) in userDirs {
-        if home.appendingPathComponent(subPath).resolvingSymlinksInPath().path == resolvedPath {
-            return icon
-        }
-    }
-
-    // 用户主目录
-    if resolvedPath == home.resolvingSymlinksInPath().path {
-        return "house.fill"
-    }
-
-    // 第二优先级：FileManager 标准目录（可能被 iCloud 重定向）
-    let standardDirs: [(FileManager.SearchPathDirectory, String)] = [
-        (.desktopDirectory, "desktopcomputer"),
-        (.documentDirectory, "doc"),
-        (.downloadsDirectory, "arrow.down.circle"),
-        (.musicDirectory, "music.note"),
-        (.moviesDirectory, "film"),
-        (.picturesDirectory, "photo"),
-        (.libraryDirectory, "books.vertical"),
-    ]
-
-    for (dir, icon) in standardDirs {
-        if let standardURL = fm.urls(for: dir, in: .userDomainMask).first,
-           standardURL.resolvingSymlinksInPath().path == resolvedPath {
-            return icon
-        }
-    }
-
-    // 系统级目录
-    let systemPaths: [(String, String)] = [
-        ("/Applications", "square.grid.2x2"),
-        ("/System", "gearshape.2"),
-        ("/Library", "building.columns"),
-        ("/Users", "person.3"),
-        ("/usr", "terminal"),
-        ("/tmp", "clock"),
-        ("/opt", "externaldrive"),
-        ("/Volumes", "externaldrive"),
-    ]
-
-    for (sysPath, icon) in systemPaths {
-        if URL(fileURLWithPath: sysPath).resolvingSymlinksInPath().path == resolvedPath {
-            return icon
-        }
-    }
-
-    // 默认图标
-    return "folder"
-}
-
-// 常用目录
-struct CommonDir: @MainActor RCBase {
-    var id: String
-    var name: String
-    var url: URL
-    var icon: String
-    init(id: String, name: String, url: URL, icon: String) {
-        self.id = id
-        self.name = name
-        self.url = url
-        self.icon = icon
-    }
-
-    var displayName: String {
-        switch id {
-        case "desktop": return AppLocalization.localized("Desktop")
-        case "documents": return AppLocalization.localized("Documents")
-        case "downloads": return AppLocalization.localized("Downloads")
-        case "applications": return AppLocalization.localized("Applications")
-        case "home": return AppLocalization.localized("Home")
-        default: return name
-        }
-    }
-}
-
 struct RCAction: @MainActor RCBase {
     static func == (lhs: RCAction, rhs: RCAction) -> Bool {
         lhs.id == rhs.id
@@ -213,11 +113,8 @@ extension RCAction {
     static let copyPath = RCAction(id: "copy-path", name: "Copy Path", enabled: true, idx: 0, icon: "doc.on.doc")
     static let copyFileName = RCAction(id: "copy-file-name", name: "Copy File Name", enabled: true, idx: 1, icon: "doc.text")
     static let deleteDirect = RCAction(id: "delete-direct", name: "Delete Direct", enabled: true, idx: 2, icon: "trash")
-    static let hideFileDir = RCAction(id: "hide", name: "Hide", enabled: false, idx: 3, icon: "eye.slash")
-    static let unhideFileDir = RCAction(id: "unhide", name: "Unhide", enabled: false, idx: 4, icon: "eye")
-    static let airdrop = RCAction(id: "airdrop", name: "AirDrop", enabled: false, idx: 5, icon: "paperplane")
 
-    static let all: [RCAction] = [.copyPath, .copyFileName, .deleteDirect, .airdrop, .hideFileDir, .unhideFileDir]
+    static let all: [RCAction] = [.copyPath, .copyFileName, .deleteDirect]
 }
 
 // New File Type
@@ -269,7 +166,7 @@ extension NewFile {
     /// 本地化显示名称。
     ///
     /// 内置类型按 id 取译文；用户自己添加的类型走 `name`，用户填的名字不该被翻译。
-    /// 和 `RCAction.displayName`、`CommonDir.displayName` 是同一个模式——NewFile
+    /// 和 `RCAction.displayName` 是同一个模式——NewFile
     /// 此前是唯一没有这个属性的模型，所以「新建文件」子菜单在每个语言下都是英文原文。
     ///
     /// JSON / TXT / Markdown / Pages / Keynote / Numbers 刻意不进字符串目录：它们是
@@ -379,21 +276,6 @@ struct NewFileMenuItem: Codable {
     }
 }
 
-/// Menu item for common directories
-struct CommonDirMenuItem: Codable {
-    let id: String
-    let name: String
-    let icon: String
-    let url: String?  // 文件夹路径，用于获取文件夹图标
-
-    init(id: String, name: String, icon: String, url: String? = nil) {
-        self.id = id
-        self.name = name
-        self.icon = icon
-        self.url = url
-    }
-}
-
 // MARK: - Conversion Extensions
 
 extension RCAction {
@@ -403,9 +285,6 @@ extension RCAction {
         case "copy-path": return AppLocalization.localized("Copy Path")
         case "copy-file-name": return AppLocalization.localized("Copy File Name")
         case "delete-direct": return AppLocalization.localized("Delete Direct")
-        case "hide": return AppLocalization.localized("Hide")
-        case "unhide": return AppLocalization.localized("Unhide")
-        case "airdrop": return AppLocalization.localized("AirDrop")
         default: return name
         }
     }

@@ -1,6 +1,6 @@
 //
 //  Messager.swift
-//  RClick
+//  TRClick
 //
 //  进程间通信（IPC）管理器
 //  基于：DistributedNotificationCenter + Codable 协议
@@ -47,16 +47,12 @@ struct MenuConfigPayload: Codable {
     let apps: [AppMenuItem]
     /// 新建文件菜单项列表
     let newFiles: [NewFileMenuItem]
-    /// 常用目录菜单项列表
-    let commonDirs: [CommonDirMenuItem]
     /// 是否折叠动作菜单（默认 false）
     let actionsCollapsed: Bool
     /// 是否折叠应用菜单（默认 false）
     let appsCollapsed: Bool
     /// 是否折叠新建文件菜单（默认 true）
     let newFilesCollapsed: Bool
-    /// 是否折叠常用目录菜单（默认 true）
-    let commonDirsCollapsed: Bool
     /// 应用图标样式：0=无图标 1=简单图标（单色 template） 2=原始图标（默认）
     let iconStyle: Int
 
@@ -65,28 +61,24 @@ struct MenuConfigPayload: Codable {
         actions: [ActionMenuItem] = [],
         apps: [AppMenuItem] = [],
         newFiles: [NewFileMenuItem] = [],
-        commonDirs: [CommonDirMenuItem] = [],
         actionsCollapsed: Bool = false,
         appsCollapsed: Bool = false,
         newFilesCollapsed: Bool = true,
-        commonDirsCollapsed: Bool = true,
         iconStyle: Int = RCAppIconStyle.simple.rawValue
     ) {
         self.version = version
         self.actions = actions
         self.apps = apps
         self.newFiles = newFiles
-        self.commonDirs = commonDirs
         self.actionsCollapsed = actionsCollapsed
         self.appsCollapsed = appsCollapsed
         self.newFilesCollapsed = newFilesCollapsed
-        self.commonDirsCollapsed = commonDirsCollapsed
         self.iconStyle = iconStyle
     }
 
     private enum CodingKeys: String, CodingKey {
-        case version, actions, apps, newFiles, commonDirs
-        case actionsCollapsed, appsCollapsed, newFilesCollapsed, commonDirsCollapsed
+        case version, actions, apps, newFiles
+        case actionsCollapsed, appsCollapsed, newFilesCollapsed
         case iconStyle
     }
 
@@ -96,11 +88,9 @@ struct MenuConfigPayload: Codable {
         actions = try values.decode([ActionMenuItem].self, forKey: .actions)
         apps = try values.decode([AppMenuItem].self, forKey: .apps)
         newFiles = try values.decode([NewFileMenuItem].self, forKey: .newFiles)
-        commonDirs = try values.decode([CommonDirMenuItem].self, forKey: .commonDirs)
         actionsCollapsed = try values.decode(Bool.self, forKey: .actionsCollapsed)
         appsCollapsed = try values.decode(Bool.self, forKey: .appsCollapsed)
         newFilesCollapsed = try values.decode(Bool.self, forKey: .newFilesCollapsed)
-        commonDirsCollapsed = try values.decode(Bool.self, forKey: .commonDirsCollapsed)
         // Payloads produced before icon styles existed used original app icons.
         iconStyle = try values.decodeIfPresent(Int.self, forKey: .iconStyle) ?? RCAppIconStyle.original.rawValue
     }
@@ -152,7 +142,6 @@ enum MenuItemType: String, Codable {
     case action = "action"  // 动作菜单
     case app = "app"  // 应用菜单
     case newFile = "new-file"  // 新建文件
-    case commonDir = "common-dir"  // 常用目录
 }
 
 /// 触发来源
@@ -242,7 +231,7 @@ struct ExtensionToMainMessage: Codable {
 
 /// Logger for Messager operations
 private let logger = Logger(
-    subsystem: Bundle.main.bundleIdentifier ?? "RClick",
+    subsystem: Bundle.main.bundleIdentifier ?? "TRClick",
     category: "Messager"
 )
 
@@ -260,8 +249,8 @@ class Messager: @unchecked Sendable {
     nonisolated(unsafe) private var extensionToMainHandlers: [ExtensionToMainAction: (Data?) -> Void] = [:]
 
     // 通知名称
-    static let mainToExtensionNotification = "RClick.MainToExtension"
-    static let extensionToMainNotification = "RClick.ExtensionToMain"
+    static let mainToExtensionNotification = "TRClick.MainToExtension"
+    static let extensionToMainNotification = "TRClick.ExtensionToMain"
 
     private let isExtension: Bool
 

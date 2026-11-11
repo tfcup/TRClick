@@ -40,7 +40,7 @@
 
 ```bash
 # Paste the output of:
-xcodebuild -project RClick.xcodeproj -scheme RClick -destination 'platform=macOS'
+xcodebuild -project TRClick.xcodeproj -scheme TRClick -destination 'platform=macOS'
 ```
 
 ## Checklist

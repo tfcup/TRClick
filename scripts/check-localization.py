@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Localization sanity checks for RClick's String Catalogs.
+"""Localization sanity checks for TRClick's String Catalogs.
 
 Verifies, for every `Localizable.xcstrings` passed on the command line (or, by
 default, both catalogs of the project):
@@ -29,7 +29,7 @@ import sys
 from pathlib import Path
 
 DEFAULT_CATALOGS = (
-    "RClick/Localizable.xcstrings",
+    "TRClick/Localizable.xcstrings",
     "FinderSyncExt/Localizable.xcstrings",
 )
 

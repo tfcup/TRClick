@@ -1,6 +1,6 @@
 //
 //  FileTypeIconProvider.swift
-//  RClick
+//  TRClick
 //
 //  Created by Claude on 2026/06/27.
 //
@@ -96,7 +96,7 @@ final class FileTypeIconProvider: @unchecked Sendable {
 
     // MARK: - Private
 
-    private let logger = Logger(subsystem: "RClick.Shared", category: "FileTypeIconProvider")
+    private let logger = Logger(subsystem: "TRClick.Shared", category: "FileTypeIconProvider")
 
     /// 旧版 PNG 图标名 → SF Symbol 映射（兼容升级用户数据库中的旧数据）
     private let iconFallbackMap: [String: String] = [
@@ -127,7 +127,7 @@ final class FileTypeIconProvider: @unchecked Sendable {
 
     /// 从主 App Bundle 加载 PNG 图标（用户自定义图标）
     private func pngIcon(for name: String) -> NSImage? {
-        guard let appBundle = Bundle(identifier: "cn.wflixu.RClick"),
+        guard let appBundle = Bundle(identifier: "com.tfcup.TRClick"),
               let image = appBundle.image(forResource: name) else {
             return nil
         }

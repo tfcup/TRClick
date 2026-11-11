@@ -1,6 +1,6 @@
 //
 //  MessageSecurity.swift
-//  RClick
+//  TRClick
 //
 //  IPC 消息安全模块 - 防止消息伪造
 //  基于：HMAC-SHA256 签名算法
@@ -13,7 +13,7 @@ import OSLog
 // MARK: - Logger
 
 private let logger = Logger(
-    subsystem: Bundle.main.bundleIdentifier ?? "RClick",
+    subsystem: Bundle.main.bundleIdentifier ?? "TRClick",
     category: "MessageSecurity"
 )
 
@@ -23,7 +23,7 @@ private let logger = Logger(
 public class MessageSecurity {
 
     // 共享密钥 - 应存储在 Keychain 中，这里使用常量简化实现
-    private static let sharedKey = "RClick_IPC_SharedKey_2026_v1"
+    private static let sharedKey = "TRClick_IPC_SharedKey_2026_v1"
 
     /// 为消息载荷添加 HMAC 签名
     /// - Parameter payload: 需要签名的消息载荷

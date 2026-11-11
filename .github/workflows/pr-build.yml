@@ -25,12 +25,12 @@ jobs:
           xcodebuild -version
           swift --version
 
-      - name: Build RClick
+      - name: Build TRClick
         run: |
           set -euo pipefail
           xcodebuild build \
-            -project RClick.xcodeproj \
-            -scheme RClick \
+            -project TRClick.xcodeproj \
+            -scheme TRClick \
             -configuration Debug \
             -destination "generic/platform=macOS" \
             ARCHS=arm64 \
@@ -44,11 +44,11 @@ jobs:
         run: |
           set -euo pipefail
           xcodebuild test \
-            -project RClick.xcodeproj \
-            -scheme RClick \
+            -project TRClick.xcodeproj \
+            -scheme TRClick \
             -configuration Debug \
             -destination "platform=macOS" \
-            -only-testing:RClickTests \
+            -only-testing:TRClickTests \
             ARCHS=arm64 \
             MACOSX_DEPLOYMENT_TARGET=15.6 \
             CODE_SIGNING_ALLOWED=NO \

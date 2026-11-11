@@ -13,7 +13,7 @@ import AppKit
 // MARK: - Logger
 
 private let logger = Logger(
-    subsystem: "RClick.FinderSyncExt",
+    subsystem: "TRClick.FinderSyncExt",
     category: "FinderSyncExt"
 )
 
@@ -97,7 +97,7 @@ class FinderSyncExt: FIFinderSync, @unchecked Sendable {
     /// a reliable observation boundary for Finder Sync across mount points.
     ///
     /// This is also what makes Finder redraw those volumes' sidebar icons with
-    /// RClick's app icon (#158) — a trade-off, not an oversight: a sandboxed
+    /// TRClick's app icon (#158) — a trade-off, not an oversight: a sandboxed
     /// extension cannot read a volume root (`/Volumes` is readable, `/Volumes/<a
     /// volume>` is not), so it cannot discover the volume's contents to observe
     /// anything narrower. See specs/external-volumes-observation.md.
@@ -176,8 +176,8 @@ class FinderSyncExt: FIFinderSync, @unchecked Sendable {
         guard isHostAppRunning else {
             Task { @MainActor in
                 self.showAlert(
-                    title: AppLocalization.localized("RClick is not running"),
-                    message: AppLocalization.localized("This action requires RClick to be running. Please launch RClick and try again.")
+                    title: AppLocalization.localized("TRClick is not running"),
+                    message: AppLocalization.localized("This action requires TRClick to be running. Please launch TRClick and try again.")
                 )
             }
             return
@@ -192,8 +192,8 @@ class FinderSyncExt: FIFinderSync, @unchecked Sendable {
         let work = DispatchWorkItem { [weak self] in
             Task { @MainActor in
                 self?.showAlert(
-                    title: AppLocalization.localized("RClick did not respond"),
-                    message: AppLocalization.localized("The operation may not have been executed. Please check that RClick is running.")
+                    title: AppLocalization.localized("TRClick did not respond"),
+                    message: AppLocalization.localized("The operation may not have been executed. Please check that TRClick is running.")
                 )
             }
         }
@@ -302,10 +302,10 @@ class FinderSyncExt: FIFinderSync, @unchecked Sendable {
 
     /// Finder 会为观察范围内的每个项目回调这里，问它该显示什么徽章。
     ///
-    /// RClick 不使用徽章，所以留空：扩展包里没有任何 badge 图（FinderSync 只认
+    /// TRClick 不使用徽章，所以留空：扩展包里没有任何 badge 图（FinderSync 只认
     /// Resources 下的 `<id>.png` 散文件，不认 asset catalog），没有可设的标识。
     ///
-    /// ⚠️ 这两行**不是**"外置盘图标变成 RClick 图标"的修复。#155 那个现象在这里
+    /// ⚠️ 这两行**不是**"外置盘图标变成 TRClick 图标"的修复。#155 那个现象在这里
     /// 被误判过两次：25b69e8 把随机标识改成空串，b697cc3 改成干脆不调用 —— 两次
     /// 都没有解决，第二次还实测过"不调用时图标照旧"。真正的原因在观察根：Finder
     /// 会把扩展的图标画到每个**被当作根观察**的文件夹上，扩展则把每个卷根放进了
@@ -319,11 +319,11 @@ class FinderSyncExt: FIFinderSync, @unchecked Sendable {
     // MARK: - Menu and toolbar item support
 
     override var toolbarItemName: String {
-        return "RClick"
+        return "TRClick"
     }
 
     override var toolbarItemToolTip: String {
-        return AppLocalization.localized("RClick: Click for menu options")
+        return AppLocalization.localized("TRClick: Click for menu options")
     }
 
     override var toolbarItemImage: NSImage {
@@ -422,7 +422,7 @@ class FinderSyncExt: FIFinderSync, @unchecked Sendable {
         }()
         logger.info("构建菜单，触发方式: \(menuKindLabel)")
 
-        let menu = NSMenu(title: "RClick")
+        let menu = NSMenu(title: "TRClick")
         // 关闭自动校验：FIFinderSync 的菜单跨进程交给 Finder 显示，跟踪循环在 Finder
         // 进程里执行，扩展侧的 validateMenuItem 不会被回调——启用状态必须在构建时
         // （menu(for:) 调用时刻）通过显式 isEnabled 定死。
@@ -438,7 +438,7 @@ class FinderSyncExt: FIFinderSync, @unchecked Sendable {
                 appendOfflineHint(menu, offline: true)
             } else {
                 requestMenuConfig()
-                menu.addItem(withTitle: AppLocalization.localized("RClick (loading...)"), action: nil, keyEquivalent: "")
+                menu.addItem(withTitle: AppLocalization.localized("TRClick (loading...)"), action: nil, keyEquivalent: "")
             }
             return menu
         }
@@ -513,29 +513,6 @@ class FinderSyncExt: FIFinderSync, @unchecked Sendable {
             }
         }
 
-        // 构建常用目录菜单
-        if !config.commonDirs.isEmpty {
-            if config.commonDirsCollapsed {
-                // 折叠：使用子菜单
-                let commonDirsTitle = AppLocalization.localized("Common Dirs")
-                let commonDirsSubMenu = NSMenu(title: commonDirsTitle)
-                for commonDir in config.commonDirs {
-                    let item = makeCommonDirItem(commonDir)
-                    commonDirsSubMenu.addItem(item)
-                }
-                let commonDirsItem = NSMenuItem(title: commonDirsTitle, action: nil, keyEquivalent: "")
-                commonDirsItem.submenu = commonDirsSubMenu
-                commonDirsItem.image = templateSymbol("folder")
-                menu.addItem(commonDirsItem)
-            } else {
-                // 不折叠：直接显示菜单项
-                for commonDir in config.commonDirs {
-                    let item = makeCommonDirItem(commonDir)
-                    menu.addItem(item)
-                }
-            }
-        }
-
         appendOfflineHint(menu, offline: offline)
         return menu
     }
@@ -547,8 +524,8 @@ class FinderSyncExt: FIFinderSync, @unchecked Sendable {
         menu.addItem(NSMenuItem.separator())
         let gray = [NSAttributedString.Key.foregroundColor: NSColor.secondaryLabelColor]
         let titles = [
-            AppLocalization.localized("RClick is not running"),
-            AppLocalization.localized("Restart RClick to restore the menu"),
+            AppLocalization.localized("TRClick is not running"),
+            AppLocalization.localized("Restart TRClick to restore the menu"),
         ]
         for title in titles {
             let item = menu.addItem(withTitle: "", action: #selector(handleLaunchHostClick(_:)), keyEquivalent: "")
@@ -558,20 +535,18 @@ class FinderSyncExt: FIFinderSync, @unchecked Sendable {
     }
 
     /// 点击离线提示：启动主程序。不带任何文档 URL，纯启动不受 TCC 文件弹窗限制；
-    /// activates = false 不抢焦点。主程序对这种启动保持静默（不打开设置窗口），
-    /// 识别信号见 HintClickLaunch。
+    /// activates = false 不抢焦点。主程序靠 RC_QUIET_LAUNCH 环境变量识别这次启动。
     @objc private func handleLaunchHostClick(_ sender: NSMenuItem) {
         let hostURL = Bundle.main.bundleURL
             .deletingLastPathComponent()   // PlugIns/
             .deletingLastPathComponent()   // Contents/
-            .deletingLastPathComponent()   // RClick.app
+            .deletingLastPathComponent()   // TRClick.app
         let config = NSWorkspace.OpenConfiguration()
         config.activates = false
         // RC_QUIET_LAUNCH=1 只在「本次真的拉起新进程」时送达主程序；App 已在运行
         // （刚点过退出还没退完、或启动后菜单尚未刷新）时系统会忽略环境变量、只
-        // 派发 reopen——所以同时写一个时间戳，主程序在两条路径上都能识别提示点击
+        // 派发 reopen，这种情况下主程序会照常弹出设置页
         config.environment = ["RC_QUIET_LAUNCH": "1"]
-        HintClickLaunch.mark()
         NSWorkspace.shared.openApplication(at: hostURL, configuration: config) { _, error in
             if let error {
                 logger.warning("Launch host app failed: \(error.localizedDescription, privacy: .public)")
@@ -628,18 +603,6 @@ class FinderSyncExt: FIFinderSync, @unchecked Sendable {
         return item
     }
 
-    private func makeCommonDirItem(_ commonDir: CommonDirMenuItem) -> NSMenuItem {
-        let item = NSMenuItem(title: commonDir.name, action: #selector(handleCommonDirClick(_:)), keyEquivalent: "")
-        item.tag = hashForCommonDir(commonDir)
-        item.target = self
-        item.image = loadIcon(named: commonDir.icon, accessibilityDescription: commonDir.name)
-        // 打开目录需要主程序执行，离线置灰
-        if !isHostAppRunning {
-            item.isEnabled = false
-        }
-        return item
-    }
-
     // MARK: - Menu Item Hash Functions
 
     private func hashForAction(_ action: ActionMenuItem) -> Int {
@@ -654,9 +617,6 @@ class FinderSyncExt: FIFinderSync, @unchecked Sendable {
         return "newfile_\(newFile.id)".hash
     }
 
-    private func hashForCommonDir(_ commonDir: CommonDirMenuItem) -> Int {
-        return "commondir_\(commonDir.id)".hash
-    }
 
     // MARK: - Menu Action Handlers
 
@@ -680,7 +640,7 @@ class FinderSyncExt: FIFinderSync, @unchecked Sendable {
             return
         }
 
-        // 慢链路：删除/隐藏/取消隐藏/AirDrop 需要主程序的 bookmark 授权与执行。
+        // 慢链路：删除等文件操作需要主程序执行。
         // 是否跳过确认以菜单构建时的标记为准——标题上写了「（跳过确认）」才跳过，
         // 不在点击瞬间重新检测按键，避免标题与实际行为分叉。
         let optionPressed = menuOptionPressed
@@ -723,7 +683,7 @@ class FinderSyncExt: FIFinderSync, @unchecked Sendable {
             itemPaths = [targetURL.path]
         }
 
-        // 打开动作统一由主程序处理 bookmark 授权与失败重试。
+        // 打开动作统一由主程序处理与失败重试。
         // 主程序离线时，makeAppItem 会将应用菜单项置灰。
         let event = ClickEventPayload(
             itemId: app.id,
@@ -747,26 +707,6 @@ class FinderSyncExt: FIFinderSync, @unchecked Sendable {
             itemId: itemId,
             itemType: .newFile,
             target: newFileTargetPaths(),
-            trigger: getTriggerForMenuKind()
-        )
-        sendClickEvent(event)
-    }
-
-    @objc private func handleCommonDirClick(_ sender: NSMenuItem) {
-        guard let config = cachedMenuConfig,
-              let commonDir = config.commonDirs.first(where: { hashForCommonDir($0) == sender.tag }) else {
-            logger.warning("CommonDir not found for tag: \(sender.tag)")
-            return
-        }
-
-        logger.debug("CommonDir clicked: \(commonDir.name) (id: \(commonDir.id))")
-
-        // 打开目录统一交给主程序，由 ActionService 检查 bookmark 权限，
-        // 必要时请求用户授权；扩展只转发目标路径。
-        let event = ClickEventPayload(
-            itemId: commonDir.id,
-            itemType: .commonDir,
-            target: commonDir.url.map { [$0] } ?? [],
             trigger: getTriggerForMenuKind()
         )
         sendClickEvent(event)
