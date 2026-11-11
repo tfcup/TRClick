@@ -11,18 +11,10 @@ import SwiftUI
 
 // MARK: - 打开设置窗口
 
-/// 调出设置窗口：不存在则由 SwiftUI 创建，已存在则前置，最后激活 App——
-/// LSUIElement 应用不会自己抢焦点，必须显式 activate。
+/// 调出设置窗口：由常驻的 AppKit 窗口控制器负责创建/前置/激活。
 @MainActor
-func showSettingsWindow(openWindow: OpenWindowAction) {
-    openWindow(id: Constants.settingsWindowID)
-
-    if let existingWindow = NSApplication.shared.windows.first(where: {
-        $0.identifier?.rawValue == Constants.settingsWindowID
-    }) {
-        existingWindow.makeKeyAndOrderFront(nil)
-    }
-    NSApplication.shared.activate(ignoringOtherApps: true)
+func showSettingsWindow(updateManager: UpdateManager) {
+    SettingsWindowController.shared.show(updateManager: updateManager)
 }
 
 /// MenuBarExtra 的标签视图。菜单栏图标从 App 启动第一刻就常驻渲染，这个视图
@@ -31,19 +23,18 @@ func showSettingsWindow(openWindow: OpenWindowAction) {
 /// 请求（手动 open 的 applicationDidFinishLaunching、已运行时的 reopen）只能
 /// 由这里接住。
 struct MenuBarExtraLabel: View {
-    @Environment(\.openWindow) private var openWindow
+    let updateManager: UpdateManager
 
     var body: some View {
         Image("MenuBar")
             .onReceive(NotificationCenter.default.publisher(for: .openSettingsRequested)) { _ in
-                showSettingsWindow(openWindow: openWindow)
+                showSettingsWindow(updateManager: updateManager)
             }
     }
 }
 
 struct MenuBarView: View {
-    @Environment(\.openWindow) var openWindow: OpenWindowAction
-
+    let updateManager: UpdateManager
     let messager = Messager.shared
 
     var body: some View {
@@ -64,7 +55,7 @@ struct MenuBarView: View {
 
     @MainActor
     private func actionSettings() {
-        showSettingsWindow(openWindow: openWindow)
+        showSettingsWindow(updateManager: updateManager)
     }
 
     @MainActor
@@ -84,5 +75,5 @@ struct MenuBarView: View {
 }
 
 #Preview {
-    MenuBarView()
+    MenuBarView(updateManager: UpdateManager(owner: "tfcup", repo: "TRClick", currentVersion: "0.1.0"))
 }

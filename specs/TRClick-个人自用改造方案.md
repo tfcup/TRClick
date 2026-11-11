@@ -428,6 +428,8 @@ ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "TRClick-v${VERSION}.app.zi
 - **删除 Bookmark 体系**：`BookmarkManager`、`BookmarkEntity`、`PermissionService` 的依赖、`AppState` 的恢复逻辑、`SettingsBackup` 相关字段；`SharedStoreError.appGroupUnavailable` 与 `looksLikeAuthorizationDenial` 一并删除。
 - **删除文件**：`TRClick/Info.plist`（未被构建引用，Info.plist 由 Xcode 生成）。
 - **删除文档**：`CODE_OF_CONDUCT.md`、`CONTRIBUTING.md`、`SECURITY.md`、旧 `specs/*.md`；保留 `README.md`、`CHANGELOG.md`、`LICENSE` 和本方案。
+- **界面精简**：关于页删除「更多应用」（iMonet / LiveCam 推广及两套图标）；通用页删除「设置管理」（备份导入导出、日志导出、重置），连带删除 `SettingsBackup` 及其测试。
+- **窗口行为**：设置窗口改为 AppKit `NSWindow`（`SettingsWindowController`，`hidesOnDeactivate = false`、`isReleasedWhenClosed = false`），切换应用不再消失，只有点关闭按钮才关闭；仍保持 `LSUIElement`，不显示 Dock 图标。
 - **测试同步**：`BookmarkAccessTests` 删除；其余测试去除 CommonDirs/Bookmark 依赖与 6 个动作的假设。
 
 **更新与 CI**

@@ -20,6 +20,12 @@ TRClick 的版本记录。项目 fork 自 [wflixu/RClick](https://github.com/wfl
 - 数据存放于 `~/Library/Application Support/TRClick/`
 - Finder 扩展保持沙盒，只负责菜单渲染与事件转发；配置经 IPC 传递
 
+### 修复
+
+- 设置窗口不再随切换应用自动关闭，只有点关闭按钮才会关闭；仍不显示 Dock 图标
+
 ### 移除
 
 - 常用目录、AirDrop、隐藏 / 取消隐藏、书签权限体系
+- 关于页的「更多应用」推广区块
+- 通用页的备份 / 导入 / 日志导出 / 重置设置

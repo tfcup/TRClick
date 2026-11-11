@@ -22,17 +22,7 @@ extension NSNotification.Name {
 struct TRClickApp: App {
     @NSApplicationDelegateAdaptor private var appDelegate: AppDelegate
 
-    @Environment(\.scenePhase) private var scenePhase
-
     @AppStorage(Key.showMenuBarExtra, store: .group) private var showMenuBarExtra = true
-
-    @Environment(\.openWindow) var openWindow
-
-    @AppLog(category: "main")
-    private var logger
-    let messager = Messager.shared
-
-    @StateObject var appState = AppState.shared
 
     @StateObject private var updateManager = UpdateManager(
         owner: "tfcup",
@@ -41,20 +31,18 @@ struct TRClickApp: App {
     )
 
     var body: some Scene {
-        SettingsWindow(appState: appState, onAppear: {})
-            .defaultAppStorage(.group)
-            .environmentObject(updateManager)
-            .modelContainer(SharedDataManager.sharedModelContainer)
-
+        // 设置窗口由 SettingsWindowController 以 AppKit 方式持有，不再用
+        // SwiftUI 的 Window scene（菜单栏应用里它会随 App 失焦被隐藏）。
+        //
         // showMenuBarExtra 为 true 时显示菜单条。label 必须用自定义视图
         // （MenuBarExtraLabel）：openSettingsRequested 的订阅挂在那里，默认的
         // 字符串+图片标签里没有我们的代码可挂。
         MenuBarExtra(
             isInserted: $showMenuBarExtra
         ) {
-            MenuBarView()
+            MenuBarView(updateManager: updateManager)
         } label: {
-            MenuBarExtraLabel()
+            MenuBarExtraLabel(updateManager: updateManager)
         }
         .defaultAppStorage(.group)
     }
@@ -75,7 +63,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     let messager = Messager.shared
     var showMenuBarExtra = UserDefaults.group.bool(forKey: Key.showMenuBarExtra)
-    var settingsWindow: NSWindow!
 
     override init() {
         super.init()

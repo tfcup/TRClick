@@ -10,8 +10,6 @@ import Foundation
 
 public enum Constants {
     static let HomedirPath = Utils.getRealHomeDir()
-    /// The identifier for the settings window.
-    static let settingsWindowID = "rclick-settings"
     static let protectedDirs = [
         HomedirPath + "/Desktop/",
         HomedirPath + "/Desktop/danger/",

@@ -10,25 +10,14 @@ import Cocoa
 import Combine
 import FinderSync
 import Foundation
-import OSLog
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct GeneralSettingsTabView: View {
-    @AppLog(category: "settings-general")
-    private var logger
-
     @AppStorage(Key.showMenuBarExtra, store: .group) private var showMenuBarExtra = true
     @EnvironmentObject var store: AppState
 
     @State private var finderSyncStatus: PermissionStatus = .unknown
     @State private var accessibilityStatus: PermissionStatus = .unknown
-
-    @State private var showDirImporter = false
-    @State private var wrongFold = false
-    @State private var showAlert = false
-
-    let messager = Messager.shared
 
     var body: some View {
         Form {
@@ -119,46 +108,6 @@ struct GeneralSettingsTabView: View {
                 .foregroundColor(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             }
-
-            // MARK: - 第三组：设置管理
-            Section {
-                // 备份
-                LabeledContent {
-                    HStack(spacing: 12) {
-                        Button(AppLocalization.localized("Export…")) {
-                            exportSettings()
-                        }
-                        Button(AppLocalization.localized("Import…")) {
-                            importSettings()
-                        }
-                    }
-                } label: {
-                    Text(appLocalized: "Backup")
-                }
-
-                // 日志
-                LabeledContent {
-                    Button(AppLocalization.localized("Export Logs…")) {
-                        exportLogs()
-                    }
-                } label: {
-                    Text(appLocalized: "Logs")
-                }
-
-                // 重置所有设置
-                HStack {
-                    Spacer()
-                    Button(AppLocalization.localized("Reset All Settings…")) {
-                        resetAllSettings()
-                    }
-                    .foregroundColor(.red)
-                }
-            } header: {
-                Text(appLocalized: "Settings Management")
-            } footer: {
-                Text(appLocalized: "Resetting all settings restores the default configuration and cannot be undone")
-                    .fixedSize(horizontal: false, vertical: true)
-            }
         }
         .formStyle(.grouped)
         .onAppear {
@@ -177,26 +126,6 @@ struct GeneralSettingsTabView: View {
         // 不等下一个 2 秒轮询
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
             updatePermissionStatus()
-        }
-        .alert(
-            Text(appLocalized: "Invalid Folder"),
-            isPresented: $wrongFold
-        ) {
-            Button(AppLocalization.localized("OK")) {
-                showDirImporter = true
-            }
-        } message: {
-            Text(appLocalized: "The selected folder is a subfolder of an already selected folder. Please choose a different folder.")
-        }
-        .alert(
-            Text(appLocalized: "Unauthorized Folder"),
-            isPresented: $showAlert
-        ) {
-            Button(AppLocalization.localized("OK")) {
-                showDirImporter = true
-            }
-        } message: {
-            Text(appLocalized: "Folder access permission is required to use this feature.")
         }
     }
 
@@ -226,176 +155,6 @@ struct GeneralSettingsTabView: View {
         PermissionChecker.openAccessibilitySettings()
     }
 
-    // MARK: - 设置管理
-
-    private func exportSettings() {
-        let savePanel = NSSavePanel()
-        savePanel.allowedContentTypes = [.json]
-        savePanel.nameFieldStringValue = "TRClick-Settings.json"
-        savePanel.canCreateDirectories = true
-        savePanel.begin { response in
-            guard response == .OK, let url = savePanel.url else { return }
-            Task { @MainActor in
-                do {
-                    let encoder = JSONEncoder()
-                    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-                    encoder.dateEncodingStrategy = .iso8601
-                    let data = try encoder.encode(SettingsBackup(appState: store))
-                    try data.write(to: url, options: .atomic)
-                    logger.info("导出设置到：\(url.path)")
-                } catch {
-                    logger.error("export settings failed: \(error.localizedDescription)")
-                    presentError(title: "Export Failed", message: error.localizedDescription)
-                }
-            }
-        }
-    }
-
-    private func importSettings() {
-        let openPanel = NSOpenPanel()
-        openPanel.allowedContentTypes = [.json]
-        openPanel.canChooseFiles = true
-        openPanel.canChooseDirectories = false
-        openPanel.allowsMultipleSelection = false
-        openPanel.begin { response in
-            guard response == .OK, let url = openPanel.url else { return }
-            Task { @MainActor in
-                do {
-                    let data = try Data(contentsOf: url)
-                    let decoder = JSONDecoder()
-                    decoder.dateDecodingStrategy = .iso8601
-                    let backup = try decoder.decode(SettingsBackup.self, from: data)
-                    guard backup.schemaVersion == SettingsBackup.currentSchemaVersion else {
-                        presentError(
-                            title: "Import Failed",
-                            message: AppLocalization.localized("The file is not a valid TRClick settings backup.")
-                        )
-                        return
-                    }
-                    guard confirmImport() else { return }
-                    applyImport(backup)
-                    logger.info("从以下路径导入设置：\(url.path)")
-                } catch {
-                    logger.error("import settings failed: \(error.localizedDescription)")
-                    presentError(
-                        title: "Import Failed",
-                        message: AppLocalization.localized("The file is not a valid TRClick settings backup.")
-                    )
-                }
-            }
-        }
-    }
-
-    /// 导入是整体替换，先把“会覆盖当前配置”和“文件夹授权不随备份迁移”说清楚。
-    private func confirmImport() -> Bool {
-        let alert = NSAlert()
-        alert.messageText = AppLocalization.localized("Import Settings?")
-        alert.informativeText = AppLocalization.localized("This replaces all current settings. Folder permissions are not included and may need to be granted again.")
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: AppLocalization.localized("Replace"))
-        alert.addButton(withTitle: AppLocalization.localized("Cancel"))
-        alert.buttons[0].hasDestructiveAction = true
-        return alert.runModal() == .alertFirstButtonReturn
-    }
-
-    private func applyImport(_ backup: SettingsBackup) {
-        var skippedApps = 0
-        store.apps = backup.apps.compactMap { entry in
-            guard let app = entry.toModel() else {
-                skippedApps += 1
-                return nil
-            }
-            return app
-        }
-        store.actions = SettingsBackup.resolveActions(backup.actions)
-        store.newFiles = backup.newFiles.map { $0.toModel() }
-        backup.preferences.apply()
-        store.sync()
-
-        if skippedApps > 0 {
-            let alert = NSAlert()
-            alert.messageText = AppLocalization.localized("Import Complete")
-            alert.informativeText = AppLocalization.localized("Some apps in the backup are not installed on this Mac and were skipped.")
-            alert.alertStyle = .informational
-            alert.addButton(withTitle: AppLocalization.localized("OK"))
-            alert.runModal()
-        }
-    }
-
-    private func exportLogs() {
-        let savePanel = NSSavePanel()
-        savePanel.allowedContentTypes = [.plainText]
-        savePanel.nameFieldStringValue = "TRClick-Logs.txt"
-        savePanel.canCreateDirectories = true
-        savePanel.begin { response in
-            guard response == .OK, let url = savePanel.url else { return }
-            Task { @MainActor in
-                do {
-                    let text = try Self.collectLogs()
-                    try text.write(to: url, atomically: true, encoding: .utf8)
-                    logger.info("导出日志到：\(url.path)")
-                } catch {
-                    logger.error("export logs failed: \(error.localizedDescription)")
-                    presentError(title: "Export Failed", message: error.localizedDescription)
-                }
-            }
-        }
-    }
-
-    /// 只导主程序当前进程的日志。Finder 扩展是独立进程，需要系统日志权限，这里不碰。
-    private static func collectLogs() throws -> String {
-        let subsystem = Bundle.main.bundleIdentifier ?? "com.tfcup.TRClick"
-        let store = try OSLogStore(scope: .currentProcessIdentifier)
-        let formatter = ISO8601DateFormatter()
-        var lines: [String] = []
-
-        for entry in try store.getEntries() {
-            guard let log = entry as? OSLogEntryLog, log.subsystem == subsystem else { continue }
-            lines.append("\(formatter.string(from: log.date)) [\(log.category)] \(log.composedMessage)")
-            if lines.count >= 5000 { break }
-        }
-        return lines.reversed().joined(separator: "\n")
-    }
-
-    private func presentError(title: String, message: String) {
-        let alert = NSAlert()
-        alert.messageText = AppLocalization.localized(title)
-        alert.informativeText = message
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: AppLocalization.localized("OK"))
-        alert.runModal()
-    }
-
-    private func resetAllSettings() {
-        let alert = NSAlert()
-        alert.messageText = AppLocalization.localized("Reset All Settings?")
-        alert.informativeText = AppLocalization.localized("This will delete all custom configurations and restore the defaults. This action cannot be undone.")
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: AppLocalization.localized("Reset"))
-        alert.addButton(withTitle: AppLocalization.localized("Cancel"))
-        alert.buttons[0].hasDestructiveAction = true
-
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            resetToDefaults()
-        }
-    }
-
-    private func resetToDefaults() {
-        store.apps = OpenWithApp.defaultApps
-        store.actions = RCAction.all.sorted { $0.idx < $1.idx }
-        store.newFiles = NewFile.all.sorted { $0.idx < $1.idx }
-        SettingsBackup.Preferences(
-            foldAppsMenu: false,
-            foldActionsMenu: false,
-            foldNewFileMenu: true,
-            appIconStyle: RCAppIconStyle.simple.rawValue,
-            showMenuBarExtra: true,
-            launchAtLogin: false
-        ).apply()
-        store.sync()
-        logger.info("重置所有设置")
-    }
 }
 
 // MARK: - 权限状态枚举
