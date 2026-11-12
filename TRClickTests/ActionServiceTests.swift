@@ -237,6 +237,43 @@ final class ActionServiceTests {
         #expect(fetched.first?.opensNewInstance == true)
     }
 
+    @Test func literalPercentEncodedNamesAreNotDecodedBeforeDeletion() async throws {
+        let (dir, _) = try makeTempFile()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let literal = dir.appendingPathComponent("report%20final.txt")
+        let other = dir.appendingPathComponent("report final.txt")
+        try Data("literal".utf8).write(to: literal)
+        try Data("other".utf8).write(to: other)
+        let permission = MockPermission()
+        permission.hasAccessResult = true
+        let service = ActionService(state: MockState(), permission: permission, confirmation: MockConfirmation())
+
+        await service.deleteFoldorFile([literal.path], "ctx-items", optionKeyPressed: true)
+
+        #expect(!FileManager.default.fileExists(atPath: literal.path))
+        #expect(try String(contentsOf: other, encoding: .utf8) == "other")
+    }
+
+    @Test func protectedFoldersMatchWithOrWithoutTrailingSlash() {
+        for path in Constants.protectedDirs {
+            #expect(Utils.isProtectedFolder(path))
+            #expect(Utils.isProtectedFolder(String(path.dropLast())))
+        }
+        #expect(!Utils.isProtectedFolder("/Applications/A User App.app"))
+    }
+
+    @Test func newFileNamesNormalizeExtensionsAndKeepTheRootDirectory() {
+        let service = ActionService(state: MockState(), permission: MockPermission(), confirmation: MockConfirmation())
+        let path = service.getUniqueFilePath(dir: "/", ext: " txt ")
+        #expect(URL(fileURLWithPath: path).deletingLastPathComponent().path == "/")
+        #expect(URL(fileURLWithPath: path).pathExtension == "txt")
+    }
+
+    @Test func appEntityKeepsLiteralPercentSequences() {
+        let url = URL(fileURLWithPath: "/Applications/App%20Name.app")
+        #expect(AppEntity(url: url).url == url)
+    }
+
     @Test func fileTemplateSurvivesSaveAndReload() throws {
         let container = try ModelContainer(
             for: AppEntity.self, ActionEntity.self, NewFileTypeEntity.self,

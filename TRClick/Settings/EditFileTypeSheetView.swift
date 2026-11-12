@@ -25,8 +25,7 @@ struct EditFileTypeSheetView: View {
 
     @State private var showSelectApp = false
     @State private var showSelectTemplate = false
-
-    let messager = Messager.shared
+    @State private var templateError: String?
 
     private let iconToSF: [String: String] = [
         "icon-file-json": "curlybraces",
@@ -186,58 +185,46 @@ struct EditFileTypeSheetView: View {
                 .keyboardShortcut(.escape)
 
                 Button(AppLocalization.localized(isAdding ? "Add" : "Save")) {
-                    saveChanges()
-                    dismiss()
+                    if saveChanges() { dismiss() }
                 }
                 .keyboardShortcut(.return)
-                .disabled(name.isEmpty || ext.isEmpty)
+                .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    || NewFile.normalizedExtension(ext).isEmpty || NewFile.normalizedExtension(ext) == "."
+                    || ext.contains("/") || ext.contains("\0"))
             }
             .padding(.bottom, 20)
         }
         .frame(width: 440, height: 580)
+        .alert(AppLocalization.localized("Template Could Not Be Saved"), isPresented: Binding(
+            get: { templateError != nil },
+            set: { if !$0 { templateError = nil } }
+        )) {
+            Button(AppLocalization.localized("OK"), role: .cancel) { templateError = nil }
+        } message: {
+            Text(templateError ?? "")
+        }
     }
 
-    private func saveChanges() {
-        if isAdding {
-            var newFile = NewFile(
-                ext: ext,
-                name: name,
-                idx: appState.newFiles.count,
-                icon: icon
-            )
-            if let app = openApp {
-                newFile.openApp = app
-            }
-            if let templateUrl = template {
-                if let templateDir = templatesDir {
-                    try? FileManager.default.createDirectory(at: templateDir, withIntermediateDirectories: true)
-                    let destUrl = templateDir.appendingPathComponent(templateUrl.lastPathComponent)
-                    try? FileManager.default.copyItem(at: templateUrl, to: destUrl)
-                    newFile.template = destUrl
-                }
-            }
-            appState.addNewFile(newFile)
-        } else {
-            if let index = appState.newFiles.firstIndex(where: { $0.id == file.id }) {
-                var updatedFile = file
-                updatedFile.name = name
-                updatedFile.ext = ext
-                updatedFile.icon = icon
-                updatedFile.openApp = openApp
-                if let templateUrl = template {
-                    if let templateDir = templatesDir {
-                        try? FileManager.default.createDirectory(at: templateDir, withIntermediateDirectories: true)
-                        let destUrl = templateDir.appendingPathComponent(templateUrl.lastPathComponent)
-                        try? FileManager.default.copyItem(at: templateUrl, to: destUrl)
-                        updatedFile.template = destUrl
-                    }
-                }
+    private func saveChanges() -> Bool {
+        do {
+            var updatedFile = file
+            updatedFile.name = name
+            updatedFile.ext = NewFile.normalizedExtension(ext)
+            updatedFile.icon = icon
+            updatedFile.openApp = openApp
+            guard let templatesDir else { throw CocoaError(.fileNoSuchFile) }
+            try updatedFile.setTemplate(from: template, in: templatesDir)
+
+            if isAdding {
+                appState.addNewFile(updatedFile)
+            } else if let index = appState.newFiles.firstIndex(where: { $0.id == file.id }) {
                 appState.newFiles[index] = updatedFile
+                appState.sync()
             }
+            return appState.lastSaveError == nil
+        } catch {
+            templateError = error.localizedDescription
+            return false
         }
-        Task { @MainActor in
-            appState.sync()
-        }
-        messager.sendRunningNotification()
     }
 }

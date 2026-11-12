@@ -106,12 +106,19 @@ class SharedDataManager {
         }
     }
 
-    /// 初始化默认数据
-    static func initializeDefaultData(context: ModelContext) async {
+    /// 首次初始化默认配置；已有安装保留空列表，动作仍按 id 补齐。
+    static func initializeDefaultData(context: ModelContext) async throws {
         // 动作表按 id 补齐缺失的默认动作：既覆盖首次安装，也覆盖升级后新增的内置动作。
         // 已有动作保持相对顺序，只在缺失项的位置插入并重新编号。
         let actionDescriptor = FetchDescriptor<ActionEntity>(sortBy: [SortDescriptor(\.sortOrder)])
-        let existingActions = (try? context.fetch(actionDescriptor)) ?? []
+        let existingActions = try context.fetch(actionDescriptor)
+        let appCount = try context.fetchCount(FetchDescriptor<AppEntity>())
+        let fileTypeCount = try context.fetchCount(FetchDescriptor<NewFileTypeEntity>())
+        let initializationKey = "defaultConfigurationInitialized"
+        let versions = try context.fetch(FetchDescriptor<DataVersion>())
+        let initialized = versions.contains { $0.key == initializationKey }
+        // 旧库没有标记时，只要已有任意配置，就不再把空列表误判为首次安装。
+        let shouldSeedLists = !initialized && existingActions.isEmpty && appCount == 0 && fileTypeCount == 0
         let defaultActions = ActionEntity.createDefaultActions()
         let existingIDs = Set(existingActions.map(\.id))
         let missingActions = defaultActions.filter { !existingIDs.contains($0.id) }
@@ -138,10 +145,7 @@ class SharedDataManager {
             action.icon = icon
         }
 
-        let fileTypeDescriptor = FetchDescriptor<NewFileTypeEntity>()
-        let fileTypeCount = try? context.fetchCount(fileTypeDescriptor)
-
-        if fileTypeCount == 0 {
+        if shouldSeedLists {
             // 插入默认文件类型
             for fileType in NewFileTypeEntity.createDefaultFileTypes() {
                 context.insert(fileType)
@@ -149,16 +153,16 @@ class SharedDataManager {
             Self.logger.info("已初始化默认文件类型")
         }
 
-        let appDescriptor = FetchDescriptor<AppEntity>()
-        let appCount = try? context.fetchCount(appDescriptor)
-
-        if appCount == 0 {
-            for app in OpenWithApp.defaultApps {
-                context.insert(AppEntity(from: app))
+        if shouldSeedLists {
+            for (index, app) in OpenWithApp.defaultApps.enumerated() {
+                context.insert(AppEntity(from: app, sortOrder: index))
             }
             Self.logger.info("已初始化默认应用")
         }
 
-        try? context.save()
+        if !initialized {
+            context.insert(DataVersion(key: initializationKey, version: 1))
+        }
+        try context.save()
     }
 }

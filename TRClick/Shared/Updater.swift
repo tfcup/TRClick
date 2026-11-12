@@ -287,8 +287,10 @@ class UpdateManager: ObservableObject {
       
     // 检查更新
     func checkForUpdates(force: Bool = false) async {
+        guard !isChecking, !isDownloading else { return }
         isChecking = true
         updateError = nil
+        availableUpdate = nil
         isUpToDate = false
         showUpdateSheet = true
 
@@ -317,6 +319,8 @@ class UpdateManager: ObservableObject {
     // MARK: - 下载和安装方法
 
     func downloadAndInstallUpdate() async {
+        guard !isDownloading else { return }
+        updateError = nil
         print("start downloadAndInstallUpdate")
 
         // App Store 构建：禁止自更新，引导用户去 Mac App Store
@@ -340,35 +344,39 @@ class UpdateManager: ObservableObject {
         
         isDownloading = true
         downloadProgress = 0
+        var downloadedURL: URL?
+        var extractedAppURL: URL?
+        defer {
+            isDownloading = false
+            if let downloadedURL { try? FileManager.default.removeItem(at: downloadedURL) }
+            if let extractedAppURL { try? FileManager.default.removeItem(at: extractedAppURL.deletingLastPathComponent()) }
+        }
         
         do {
             // 1. 下载 ZIP 文件
-            let downloadedURL = try await downloadAsset(asset: appZipAsset)
+            let archiveURL = try await downloadAsset(asset: appZipAsset)
+            downloadedURL = archiveURL
             
             // 2. 解压到临时目录
-            let appURL = try await extractAppZip(zipURL: downloadedURL)
+            let appURL = try await extractAppZip(zipURL: archiveURL)
+            extractedAppURL = appURL
             
             // 3. 安装应用到应用程序目录
             try await installApplication(appURL: appURL)
             
-            // 4. 清理临时文件
-            try? FileManager.default.removeItem(at: downloadedURL)
-            try? FileManager.default.removeItem(at: appURL.deletingLastPathComponent())
-            
-            // 5. 提示用户安装完成
+            // 只有完整安装成功才显示完成提示；临时文件由 defer 统一清理。
             showInstallationCompleteAlert()
             
         } catch {
             updateError = String(format: AppLocalization.localized("Installation failed: %@"), error.localizedDescription)
         }
         
-        isDownloading = false
     }
 
     func downloadAsset(asset: GitHubRelease.Asset) async throws -> URL {
         print("start downloadAsset:\(asset.browserDownloadUrl)")
         let tempDir = FileManager.default.temporaryDirectory
-        let downloadURL = tempDir.appendingPathComponent(asset.name)
+        let downloadURL = tempDir.appendingPathComponent("\(UUID().uuidString)-\(asset.name)")
         
         var request = URLRequest(url: URL(string: asset.browserDownloadUrl)!)
         request.setValue("application/octet-stream", forHTTPHeaderField: "Accept")
@@ -417,41 +425,39 @@ class UpdateManager: ObservableObject {
 
     // MARK: - 解压 APP Zip 文件
 
-    private func extractAppZip(zipURL: URL) async throws -> URL {
-        let tempDir = FileManager.default.temporaryDirectory
-        let extractionDir = tempDir.appendingPathComponent("app_extraction")
-        
-        // 创建解压目录
-        try FileManager.default.createDirectory(at: extractionDir, withIntermediateDirectories: true)
-        
-        // 使用系统命令解压
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-        process.arguments = ["-o", zipURL.path, "-d", extractionDir.path]
-        
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-        process.standardOutput = outputPipe
-        process.standardError = errorPipe
-        
-        try process.run()
-        process.waitUntilExit()
-        
-        guard process.terminationStatus == 0 else {
-            let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-            let errorString = String(data: errorData, encoding: .utf8) ?? AppLocalization.localized("Unknown error")
-            throw InstallationError.zipExtractionFailed(String(format: AppLocalization.localized("Extraction failed: %@"), errorString))
+    /// 解压不占用主线程；持续读取错误输出，避免等待退出时管道写满死锁。
+    func extractAppZip(zipURL: URL) async throws -> URL {
+        let extractionDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("TRClick-extraction-\(UUID().uuidString)", isDirectory: true)
+        return try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .utility).async {
+                do {
+                    let fileManager = FileManager.default
+                    try fileManager.createDirectory(at: extractionDir, withIntermediateDirectories: true)
+                    let process = Process()
+                    process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
+                    process.arguments = ["-q", "-o", zipURL.path, "-d", extractionDir.path]
+                    process.standardOutput = FileHandle.nullDevice
+                    let errorPipe = Pipe()
+                    process.standardError = errorPipe
+                    try process.run()
+                    let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+                    process.waitUntilExit()
+                    guard process.terminationStatus == 0 else {
+                        let detail = String(data: errorData, encoding: .utf8) ?? AppLocalization.localized("Unknown error")
+                        throw InstallationError.zipExtractionFailed(String(format: AppLocalization.localized("Extraction failed: %@"), detail))
+                    }
+                    let contents = try fileManager.contentsOfDirectory(at: extractionDir, includingPropertiesForKeys: nil)
+                    guard let appURL = contents.first(where: { $0.pathExtension == "app" }) else {
+                        throw InstallationError.noAppFound(AppLocalization.localized("No .app application was found in the ZIP file."))
+                    }
+                    continuation.resume(returning: appURL)
+                } catch {
+                    try? FileManager.default.removeItem(at: extractionDir)
+                    continuation.resume(throwing: error)
+                }
+            }
         }
-        
-        // 查找解压后的 .app 文件
-        let fileManager = FileManager.default
-        let contents = try fileManager.contentsOfDirectory(at: extractionDir, includingPropertiesForKeys: nil)
-        
-        guard let appURL = contents.first(where: { $0.pathExtension == "app" }) else {
-            throw InstallationError.noAppFound(AppLocalization.localized("No .app application was found in the ZIP file."))
-        }
-        
-        return appURL
     }
 
     // MARK: - 请求文件夹权限
@@ -478,36 +484,33 @@ class UpdateManager: ObservableObject {
         }
     }
     // MARK: - 安装应用到应用程序目录
-    private func installApplication(appURL: URL) async throws {
+    /// 新包先复制到同卷暂存目录并校验，再由文件系统替换旧版。
+    /// applicationsDirectory 可指定临时目录，以便测试不会触碰已安装的应用。
+    func installApplication(appURL: URL, applicationsDirectory: URL? = nil) async throws {
         let fileManager = FileManager.default
-        let applicationsURL = fileManager.urls(for: .applicationDirectory, in: .localDomainMask).first!
-        let destinationAppURL = applicationsURL.appendingPathComponent(appURL.lastPathComponent)
-        print("start install \(appURL.path) --- \(destinationAppURL.path)")
-        // 安装之前，先检查一下destinationAppURL 是否有权限读写，如果没有权限，请求权限
-         // 检查对应用程序文件夹的写入权限
-        if !fileManager.isWritableFile(atPath: applicationsURL.path) {
-            print("没有应用程序文件夹的写入权限，正在请求权限...")
+        let applicationsURL = applicationsDirectory
+            ?? fileManager.urls(for: .applicationDirectory, in: .localDomainMask).first!
+        let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "TRClick"
+        let destinationAppURL = applicationsURL.appendingPathComponent("\(appName).app")
+        if applicationsDirectory == nil, !fileManager.isWritableFile(atPath: applicationsURL.path) {
             try await requestApplicationsFolderAccess()
         }
-        do {
-            // 检查目标位置是否已存在应用
-            if fileManager.fileExists(atPath: destinationAppURL.path) {
-                // 先尝试移动到废纸篓而不是直接删除
-                try fileManager.trashItem(at: destinationAppURL, resultingItemURL: nil)
-            }
-            
-            // 复制应用到应用程序目录
-            try fileManager.copyItem(at: appURL, to: destinationAppURL)
-            
-            // 验证应用程序是否有效
-            guard Bundle(url: destinationAppURL) != nil else {
-//                try fileManager.removeItem(at: destinationAppURL)
-                throw InstallationError.invalidAppBundle(AppLocalization.localized("The application bundle is invalid or damaged."))
-            }
-        } catch {
-            print("❌ 安装失败: \(error)")
+        let stagingDir = applicationsURL.appendingPathComponent(".TRClick-update-\(UUID().uuidString)", isDirectory: true)
+        try fileManager.createDirectory(at: stagingDir, withIntermediateDirectories: true)
+        defer { try? fileManager.removeItem(at: stagingDir) }
+        let stagedApp = stagingDir.appendingPathComponent(destinationAppURL.lastPathComponent)
+        try fileManager.copyItem(at: appURL, to: stagedApp)
+        guard let bundle = Bundle(url: stagedApp),
+              bundle.bundleIdentifier == (Bundle.main.bundleIdentifier ?? "com.tfcup.TRClick"),
+              let executable = bundle.executableURL,
+              fileManager.isExecutableFile(atPath: executable.path) else {
+            throw InstallationError.invalidAppBundle(AppLocalization.localized("The application bundle is invalid or damaged."))
         }
-        
+        if fileManager.fileExists(atPath: destinationAppURL.path) {
+            _ = try fileManager.replaceItemAt(destinationAppURL, withItemAt: stagedApp, options: .usingNewMetadataOnly)
+        } else {
+            try fileManager.moveItem(at: stagedApp, to: destinationAppURL)
+        }
     }
 
     // MARK: - App Store 更新引导
@@ -596,7 +599,7 @@ class UpdateManager: ObservableObject {
         }
     }
 
-    enum InstallationError: LocalizedError {
+    nonisolated enum InstallationError: LocalizedError {
         case zipExtractionFailed(String)
         case noAppFound(String)
         case invalidAppBundle(String)

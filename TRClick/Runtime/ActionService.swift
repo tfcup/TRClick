@@ -34,15 +34,14 @@ final class ActionService {
         if let dirPath = target.first {
             let pasteboard = NSPasteboard.general
             pasteboard.clearContents()
-            pasteboard.setString(dirPath.removingPercentEncoding ?? dirPath, forType: .string)
+            pasteboard.setString(dirPath, forType: .string)
         }
     }
 
     /// 复制文件名（不含路径）到剪贴板
     func copyFileName(_ target: [String]) {
         guard let path = target.first else { return }
-        let decoded = path.removingPercentEncoding ?? path
-        let name = URL(fileURLWithPath: decoded).lastPathComponent
+        let name = URL(fileURLWithPath: path).lastPathComponent
         guard !name.isEmpty else { return }
 
         let pasteboard = NSPasteboard.general
@@ -66,11 +65,17 @@ final class ActionService {
         for resolved in AppPresets.resolveOpenTargets(
             appPath: appUrl.path, explicit: rcitem.opensContainingDir, targetPaths: target
         ) {
-            await openWithApp(resolved.url, appUrl: appUrl, opensNewInstance: rcitem.opensNewInstance)
+            await openWithApp(
+                resolved.url, appUrl: appUrl, opensNewInstance: rcitem.opensNewInstance,
+                arguments: rcitem.arguments, environment: rcitem.environment
+            )
         }
     }
 
-    private func openWithApp(_ url: URL, appUrl: URL, opensNewInstance: Bool) async {
+    private func openWithApp(
+        _ url: URL, appUrl: URL, opensNewInstance: Bool,
+        arguments: [String] = [], environment: [String: String] = [:]
+    ) async {
         let logger = self.logger  // 捕获 Sendable logger，供完成回调使用
         var isDir: ObjCBool = false
         let exists = FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
@@ -87,12 +92,18 @@ final class ActionService {
         let config = NSWorkspace.OpenConfiguration()
         // 以新实例打开（浏览器类 app 会新开窗口而非新 tab）
         config.createsNewApplicationInstance = opensNewInstance
+        config.arguments = arguments
+        config.environment = environment
         NSWorkspace.shared.open([url], withApplicationAt: appUrl, configuration: config) { [weak self] runningApp, error in
             guard let self else { return }
             if let error {
                 // 失败兜底：再弹授权并重试一次
                 Task { @MainActor in
-                    await self.openRetryAfterPermission(url: url, appUrl: appUrl, accessURL: accessURL, opensNewInstance: opensNewInstance, firstError: error)
+                    await self.openRetryAfterPermission(
+                        url: url, appUrl: appUrl, accessURL: accessURL,
+                        opensNewInstance: opensNewInstance, arguments: arguments,
+                        environment: environment, firstError: error
+                    )
                 }
             } else if let runningApp {
                 logger.debug("Successfully opened with application: \(runningApp.localizedName ?? "Unknown")")
@@ -100,7 +111,10 @@ final class ActionService {
         }
     }
 
-    private func openRetryAfterPermission(url: URL, appUrl: URL, accessURL: URL, opensNewInstance: Bool, firstError: Error) async {
+    private func openRetryAfterPermission(
+        url: URL, appUrl: URL, accessURL: URL, opensNewInstance: Bool,
+        arguments: [String], environment: [String: String], firstError: Error
+    ) async {
         let logger = self.logger  // 捕获 Sendable logger
         guard await permission.promptForPermission(for: accessURL) != nil else {
             logger.error("打开失败且用户取消授权：\(url.path) — \(firstError.localizedDescription)")
@@ -108,6 +122,8 @@ final class ActionService {
         }
         let config = NSWorkspace.OpenConfiguration()
         config.createsNewApplicationInstance = opensNewInstance
+        config.arguments = arguments
+        config.environment = environment
         NSWorkspace.shared.open([url], withApplicationAt: appUrl, configuration: config) { _, retryError in
             if let retryError {
                 logger.error("重试打开仍失败：\(url.path) — \(retryError.localizedDescription)")
@@ -151,21 +167,19 @@ final class ActionService {
         }
 
         var pathsToDelete: [String] = []
-        for item in target {
-            let decodedPath = item.removingPercentEncoding ?? item
-
-            if Utils.isProtectedFolder(decodedPath) {
+        for path in target {
+            if Utils.isProtectedFolder(path) {
                 let alert = NSAlert()
                 alert.messageText = AppLocalization.localized("Warning")
-                alert.informativeText = String(format: AppLocalization.localized("Protected system folders cannot be deleted: %@"), decodedPath)
+                alert.informativeText = String(format: AppLocalization.localized("Protected system folders cannot be deleted: %@"), path)
                 alert.alertStyle = .warning
                 alert.addButton(withTitle: AppLocalization.localized("OK"))
                 alert.runModal()
-                logger.warning("试图删除受保护的系统文件夹，操作已被阻止：\(decodedPath)")
+                logger.warning("试图删除受保护的系统文件夹，操作已被阻止：\(path)")
                 continue
             }
 
-            pathsToDelete.append(decodedPath)
+            pathsToDelete.append(path)
         }
 
         guard !pathsToDelete.isEmpty else { return }
@@ -240,7 +254,7 @@ final class ActionService {
             return
         }
 
-        let ext = rcitem.ext
+        let ext = NewFile.normalizedExtension(rcitem.ext)
         logger.info("create file dir:\(dirPath) -- ext \(ext)")
         let filePath = getUniqueFilePath(dir: dirPath, ext: ext)
         let fileURL = URL(fileURLWithPath: filePath)
@@ -252,16 +266,31 @@ final class ActionService {
                 try fileManager.copyItem(at: templateUrl, to: fileURL)
                 logger.info("已成功复制模板到目标路径：\(fileURL.path)")
             } else {
-                if let defaultTemplateURL = Bundle.main.url(forResource: "template", withExtension: ext.replacingOccurrences(of: ".", with: "")) {
+                let cleanExt = ext.hasPrefix(".") ? String(ext.dropFirst()) : ext
+                if let defaultTemplateURL = Bundle.main.url(forResource: "template", withExtension: cleanExt) {
                     logger.info("使用模板创建文件，模板路径：\(defaultTemplateURL.path)")
                     try fileManager.copyItem(at: defaultTemplateURL, to: fileURL)
                     logger.info("已成功复制模板到目标路径：\(fileURL.path)")
                 } else {
+                    // 这些格式需要完整的文档包，不能用零字节文件代替。
+                    if ["docx", "pptx", "xlsx", "pages", "key", "numbers"].contains(cleanExt.lowercased()) {
+                        let alert = NSAlert()
+                        alert.messageText = AppLocalization.localized("Template Required")
+                        alert.informativeText = String(format: AppLocalization.localized("Choose a valid %@ template in Settings > New File before creating this document."), ext)
+                        alert.addButton(withTitle: AppLocalization.localized("OK"))
+                        NSApp.activate(ignoringOtherApps: true)
+                        alert.runModal()
+                        return
+                    }
                     logger.warning("模板文件不存在：\(ext)")
                     try Data().write(to: fileURL)
                 }
             }
-            revealInFinderAndRename(fileURL)
+            if let appURL = rcitem.openApp {
+                await openWithApp(fileURL, appUrl: appURL, opensNewInstance: false)
+            } else {
+                revealInFinderAndRename(fileURL)
+            }
         } catch let error as NSError {
             switch error.domain {
             case NSCocoaErrorDomain:
@@ -286,7 +315,8 @@ final class ActionService {
     /// 生成目录内唯一的文件名（避免重名冲突）
     func getUniqueFilePath(dir: String, ext: String) -> String {
         let fileManager = FileManager.default
-        let dirURL = URL(fileURLWithPath: dir.hasSuffix("/") ? String(dir.dropLast()) : dir)
+        let dirURL = URL(fileURLWithPath: dir)
+        let ext = NewFile.normalizedExtension(ext)
         let baseFileName = AppLocalization.localized("Untitled")
         var filePath = dirURL.appendingPathComponent("\(baseFileName)\(ext)").path
         var counter = 1
@@ -302,8 +332,7 @@ final class ActionService {
 
     /// 解析新建文件的目标目录（目录直接用；文件取父目录）
     private func targetDirectoryForNewFile(_ target: [String]) -> String? {
-        guard let rawPath = target.first else { return nil }
-        let path = rawPath.removingPercentEncoding ?? rawPath
+        guard let path = target.first else { return nil }
         var isDirectory: ObjCBool = false
 
         if FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) {

@@ -133,12 +133,41 @@ struct NewFile: @MainActor RCBase {
     var template: URL?
 
     init(ext: String, name: String, enabled: Bool = true, idx: Int, icon: String = "document", id: String = UUID().uuidString) {
-        self.ext = ext
+        self.ext = Self.normalizedExtension(ext)
         self.name = name
         self.enabled = enabled
         self.idx = idx
         self.icon = icon
         self.id = id
+    }
+
+    /// 扩展名统一带前导点；空字符串仍表示无扩展名。
+    static func normalizedExtension(_ value: String) -> String {
+        let value = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty || value.hasPrefix(".") ? value : "." + value
+    }
+
+    /// 每个文件类型独立保存模板；同名替换先复制成功再提交，避免破坏旧模板。
+    mutating func setTemplate(from source: URL?, in directory: URL) throws {
+        guard let source else {
+            template = nil
+            return
+        }
+        guard source.standardizedFileURL != template?.standardizedFileURL else { return }
+
+        let manager = FileManager.default
+        let typeDirectory = directory.appendingPathComponent(id, isDirectory: true)
+        try manager.createDirectory(at: typeDirectory, withIntermediateDirectories: true)
+        let destination = typeDirectory.appendingPathComponent(source.lastPathComponent)
+        let staging = typeDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? manager.removeItem(at: staging) }
+        try manager.copyItem(at: source, to: staging)
+        if manager.fileExists(atPath: destination.path) {
+            _ = try manager.replaceItemAt(destination, withItemAt: staging)
+        } else {
+            try manager.moveItem(at: staging, to: destination)
+        }
+        template = destination
     }
 }
 

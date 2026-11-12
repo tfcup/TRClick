@@ -67,9 +67,7 @@ final class AppEntity {
     // 计算属性：从存储的数据解码
     var url: URL {
         get {
-            // 处理旧数据中可能存在的百分号编码路径
-            let decoded = urlString.removingPercentEncoding ?? urlString
-            return URL(fileURLWithPath: decoded)
+            return URL(fileURLWithPath: urlString)
         }
         set {
             urlString = newValue.path(percentEncoded: false)

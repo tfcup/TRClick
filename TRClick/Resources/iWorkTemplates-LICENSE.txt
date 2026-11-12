@@ -1,0 +1,62 @@
+iWork blank template sources and licenses
+
+The following files are redistributed without modifying their contents.
+
+1. template.pages and template.key
+   Project: cupertino-files
+   Revision: 9550fc8163c64774f4400b98e0542823da59f8b6
+   Original paths: data/blanks/blank.pages, data/blanks/blank.key
+   https://github.com/den-frie-vilje/cupertino-files/tree/9550fc8163c64774f4400b98e0542823da59f8b6/data/blanks
+
+   These blank documents were prepared upstream from iwork_mcp examples/sample.pages
+   and examples/sample.key, with their document content cleared. The donor project
+   declares MIT in its package.json at revision f26bb077ca684f4ce39958b9bdb01667a5a22b6d.
+   https://github.com/reichenbach/iwork_mcp/tree/f26bb077ca684f4ce39958b9bdb01667a5a22b6d
+   Upstream provenance: https://github.com/den-frie-vilje/cupertino-files/blob/9550fc8163c64774f4400b98e0542823da59f8b6/scripts/make-blanks.ts
+
+MIT License
+
+Copyright (c) 2026 Ole Kristensen
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+2. template.numbers
+   Project: numbers-parser
+   Revision: 5cf174d432276bb1651070c9866e8e093a034d19
+   Original path: src/numbers_parser/data/empty.numbers
+   https://github.com/masaccio/numbers-parser/blob/5cf174d432276bb1651070c9866e8e093a034d19/src/numbers_parser/data/empty.numbers
+
+MIT License
+
+Copyright 2021 Jon Connell
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+and associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE

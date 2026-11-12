@@ -2,7 +2,7 @@
 //  MessageSecurity.swift
 //  TRClick
 //
-//  IPC 消息安全模块 - 防止消息伪造
+//  IPC 消息完整性校验（固定共享密钥不能认证发送进程身份）
 //  基于：HMAC-SHA256 签名算法
 //
 
@@ -22,7 +22,7 @@ private let logger = Logger(
 /// 为 IPC 消息提供 HMAC-SHA256 签名验证
 public class MessageSecurity {
 
-    // 共享密钥 - 应存储在 Keychain 中，这里使用常量简化实现
+    // 保留现有协议的固定密钥；进程身份认证需由可信 IPC 另行解决。
     private static let sharedKey = "TRClick_IPC_SharedKey_2026_v1"
 
     /// 为消息载荷添加 HMAC 签名
@@ -58,11 +58,7 @@ public class MessageSecurity {
 
         let key = SymmetricKey(data: sharedKey.data(using: .utf8)!)
 
-        // 计算预期的 HMAC（使用保存的原始数据）
-        let expectedHMAC = HMAC<SHA256>.authenticationCode(for: payloadData, using: key)
-
-        // 比较签名（常数时间比较，防止时序攻击）
-        let isValid = signatureData.elementsEqual(Data(expectedHMAC))
+        let isValid = HMAC<SHA256>.isValidAuthenticationCode(signatureData, authenticating: payloadData, using: key)
 
         // 添加详细日志
         logger.debug("Signature verification: \(isValid ? "PASSED" : "FAILED")")

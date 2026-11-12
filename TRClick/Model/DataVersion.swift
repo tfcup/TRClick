@@ -8,7 +8,7 @@
 import SwiftData
 import Foundation
 
-/// 数据版本控制模型 - 用于跨进程数据同步
+/// 持久化数据版本与默认配置初始化标记。
 @Model
 final class DataVersion {
     @Attribute(.unique) var key: String

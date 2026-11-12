@@ -73,7 +73,7 @@ struct AboutSettingsTabView: View {
 
     /// 更新区一行的全部推导集中在这里，视图只读结果，不在 body 里散落一串 if。
     ///
-    /// 判定顺序和更新弹窗保持一致：检查中 → 有新版本 → 出错 → 已是最新 → 未检查。
+    /// 判定顺序和更新弹窗保持一致：检查中 → 出错 → 有新版本 → 已是最新 → 未检查。
     private struct UpdateStatus {
         enum Action { case check, details }
 
@@ -95,7 +95,7 @@ struct AboutSettingsTabView: View {
                 action: .check
             )
         }
-        if let release = updateManager.availableUpdate {
+        if updateManager.updateError == nil, let release = updateManager.availableUpdate {
             return UpdateStatus(
                 title: AppLocalization.localized("New Version Available"),
                 icon: "arrow.down.circle.fill",
@@ -108,7 +108,7 @@ struct AboutSettingsTabView: View {
         if updateManager.updateError != nil {
             // 只给短句，具体原因留在弹窗里，免得长句把这一行挤变形
             return UpdateStatus(
-                title: AppLocalization.localized("Failed to Check for Updates"),
+                title: AppLocalization.localized("Update Failed"),
                 icon: "exclamationmark.triangle.fill",
                 color: .yellow,
                 actionTitle: AppLocalization.localized("Check for Updates"),

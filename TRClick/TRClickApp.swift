@@ -134,7 +134,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
             // 初始化默认数据
             let context = ModelContext(SharedDataManager.sharedModelContainer)
-            await SharedDataManager.initializeDefaultData(context: context)
+            do {
+                try await SharedDataManager.initializeDefaultData(context: context)
+            } catch {
+                StartupFailure.presentAndExit(error)
+            }
 
             // 补齐全默认动作后刷新内存快照，让新增动作在本次启动就进入菜单
             appState.refresh()

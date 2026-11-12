@@ -660,7 +660,7 @@ class FinderSyncExt: FIFinderSync, @unchecked Sendable {
         guard let first = itemPaths.first else { return }
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        pasteboard.setString(first.removingPercentEncoding ?? first, forType: .string)
+        pasteboard.setString(first, forType: .string)
     }
 
     @objc private func handleAppClick(_ sender: NSMenuItem) {

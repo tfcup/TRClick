@@ -437,7 +437,9 @@ class Messager: @unchecked Sendable {
             let signedPayload = try JSONDecoder().decode(SignedPayload<T>.self, from: signedData)
 
             if MessageSecurity.verify(signedPayload) {
-                return signedPayload.payload
+                // payload 字段只为保持协议兼容；执行数据必须来自已经验签的字节。
+                guard let payloadData = Data(base64Encoded: signedPayload.jsonData) else { return nil }
+                return try JSONDecoder().decode(T.self, from: payloadData)
             } else {
                 logger.warning("Message signature verification failed, dropping message")
                 return nil

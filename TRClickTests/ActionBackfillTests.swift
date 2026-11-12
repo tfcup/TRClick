@@ -32,7 +32,7 @@ struct ActionBackfillTests {
     @Test func freshStoreSeedsCopyFileNameAfterCopyPath() async throws {
         let context = try makeContext()
 
-        await SharedDataManager.initializeDefaultData(context: context)
+        try await SharedDataManager.initializeDefaultData(context: context)
 
         let actions = try fetchActions(context)
         #expect(actions.map(\.id) == [
@@ -51,7 +51,7 @@ struct ActionBackfillTests {
         }
         try context.save()
 
-        await SharedDataManager.initializeDefaultData(context: context)
+        try await SharedDataManager.initializeDefaultData(context: context)
 
         let actions = try fetchActions(context)
         #expect(actions.map(\.id) == [
@@ -66,7 +66,7 @@ struct ActionBackfillTests {
                                     icon: "textformat", isEnabled: true, sortOrder: 1))
         try context.save()
 
-        await SharedDataManager.initializeDefaultData(context: context)
+        try await SharedDataManager.initializeDefaultData(context: context)
 
         let action = try fetchActions(context).first { $0.id == "copy-file-name" }
         #expect(action?.icon == "doc.text")
@@ -75,10 +75,36 @@ struct ActionBackfillTests {
     @Test func runningBackfillTwiceDoesNotDuplicateActions() async throws {
         let context = try makeContext()
 
-        await SharedDataManager.initializeDefaultData(context: context)
-        await SharedDataManager.initializeDefaultData(context: context)
+        try await SharedDataManager.initializeDefaultData(context: context)
+        try await SharedDataManager.initializeDefaultData(context: context)
 
         let count = try context.fetchCount(FetchDescriptor<ActionEntity>())
         #expect(count == 3)
+    }
+
+    @Test func clearingBothListsSurvivesInitialization() async throws {
+        let context = try makeContext()
+        try await SharedDataManager.initializeDefaultData(context: context)
+        try context.delete(model: AppEntity.self)
+        try context.delete(model: NewFileTypeEntity.self)
+        try context.save()
+
+        try await SharedDataManager.initializeDefaultData(context: context)
+
+        #expect(try context.fetchCount(FetchDescriptor<AppEntity>()) == 0)
+        #expect(try context.fetchCount(FetchDescriptor<NewFileTypeEntity>()) == 0)
+        #expect(try context.fetchCount(FetchDescriptor<DataVersion>()) == 1)
+    }
+
+    @Test func existingStoreWithoutInitializationMarkerKeepsEmptyLists() async throws {
+        let context = try makeContext()
+        context.insert(ActionEntity(id: "copy-path", name: "Copy Path", icon: "doc"))
+        try context.save()
+
+        try await SharedDataManager.initializeDefaultData(context: context)
+
+        #expect(try context.fetchCount(FetchDescriptor<AppEntity>()) == 0)
+        #expect(try context.fetchCount(FetchDescriptor<NewFileTypeEntity>()) == 0)
+        #expect(try context.fetchCount(FetchDescriptor<DataVersion>()) == 1)
     }
 }
