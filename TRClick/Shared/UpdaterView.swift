@@ -115,10 +115,15 @@ struct UpdateView: View {
                 .font(.body)
                 .multilineTextAlignment(.center)
             
-            Button(AppLocalization.localized("OK")) {
-                updateManager.dismissUpdateSheet()
+            HStack {
+                Button(AppLocalization.localized("Download Manually")) {
+                    updateManager.openReleasesPage()
+                }
+                Button(AppLocalization.localized("OK")) {
+                    updateManager.dismissUpdateSheet()
+                }
+                .buttonStyle(.bordered)
             }
-            .buttonStyle(.bordered)
         }
     }
 }

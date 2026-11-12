@@ -4,6 +4,78 @@ import Testing
 
 @MainActor
 struct UpdaterTests {
+    private func makeChecker(response: String = "release") -> (GitHubReleaseChecker, URLSession) {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [UpdateManifestURLProtocol.self]
+        configuration.httpAdditionalHeaders = ["X-Test-Response": response]
+        let session = URLSession(configuration: configuration)
+        return (GitHubReleaseChecker(owner: "tfcup", repo: "TRClick", session: session), session)
+    }
+
+    @Test func newerManifestOffersThePublishedApplication() async throws {
+        let (checker, session) = makeChecker()
+        defer { session.invalidateAndCancel() }
+
+        let result = await checker.checkForUpdate(currentVersion: "0.1.4")
+        guard case .updateAvailable(let release) = result else {
+            Issue.record("Expected an available update from the release manifest")
+            return
+        }
+        #expect(release.version == "0.1.5")
+        #expect(release.body == "Release notes")
+        #expect(release.assets.first?.browserDownloadUrl == "https://github.com/tfcup/TRClick/releases/download/v0.1.5/TRClick-v0.1.5.app.zip")
+    }
+
+    @Test(arguments: ["0.1.5", "0.1.6"])
+    func currentOrNewerVersionIsUpToDate(version: String) async {
+        let (checker, session) = makeChecker()
+        defer { session.invalidateAndCancel() }
+
+        guard case .upToDate = await checker.checkForUpdate(currentVersion: version) else {
+            Issue.record("The manifest must not offer the same or an older version")
+            return
+        }
+    }
+
+    @Test(arguments: [403, 404, 503])
+    func httpErrorsKeepTheirMeaning(status: Int) async {
+        let (checker, session) = makeChecker(response: "http-\(status)")
+        defer { session.invalidateAndCancel() }
+
+        guard case .failed(let reason) = await checker.checkForUpdate(currentVersion: "0.1.4") else {
+            Issue.record("An HTTP failure must not be reported as up to date")
+            return
+        }
+        #expect(reason == UpdateCheckError.httpStatus(status).localizedDescription)
+        #expect(!reason.contains("-1011"))
+    }
+
+    @Test func invalidManifestIsReportedAsAParsingFailure() async {
+        let (checker, session) = makeChecker(response: "invalid-json")
+        defer { session.invalidateAndCancel() }
+
+        guard case .failed(let reason) = await checker.checkForUpdate(currentVersion: "0.1.4") else {
+            Issue.record("Invalid update information must fail the check")
+            return
+        }
+        #expect(reason == UpdateCheckError.invalidManifest.localizedDescription)
+    }
+
+    @Test(arguments: ["offline", "timeout"])
+    func networkFailuresHaveActionableMessages(response: String) async {
+        let (checker, session) = makeChecker(response: response)
+        defer { session.invalidateAndCancel() }
+
+        guard case .failed(let reason) = await checker.checkForUpdate(currentVersion: "0.1.4") else {
+            Issue.record("A network error must fail the update check")
+            return
+        }
+        let key = response == "offline"
+            ? "You appear to be offline. Check your connection and try again."
+            : "The update check timed out. Please try again later."
+        #expect(reason == AppLocalization.localized(key))
+    }
+
     private var appName: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "TRClick"
     }
@@ -90,4 +162,47 @@ struct UpdaterTests {
             try await updater.extractAppZip(zipURL: root.appendingPathComponent("missing.zip"))
         }
     }
+}
+
+/// 按请求头选择固定响应，测试不依赖真实网络，也不共享可变的响应处理器。
+nonisolated private final class UpdateManifestURLProtocol: URLProtocol, @unchecked Sendable {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        // 同时验证客户端始终请求动态清单，并绕过本地旧缓存。
+        guard request.url?.absoluteString == "https://github.com/tfcup/TRClick/releases/latest/download/update.json",
+              request.cachePolicy == .reloadIgnoringLocalCacheData,
+              request.value(forHTTPHeaderField: "Cache-Control") == "no-cache" else {
+            client?.urlProtocol(self, didFailWithError: URLError(.badURL))
+            return
+        }
+        let scenario = request.value(forHTTPHeaderField: "X-Test-Response") ?? "release"
+        if scenario == "offline" || scenario == "timeout" {
+            let code: URLError.Code = scenario == "offline" ? .notConnectedToInternet : .timedOut
+            client?.urlProtocol(self, didFailWithError: URLError(code))
+            return
+        }
+        let status = scenario.hasPrefix("http-") ? Int(scenario.dropFirst(5))! : 200
+        let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "application/json"])!
+        let manifest = """
+        {
+          "id": 1, "tag_name": "v0.1.5", "name": "TRClick v0.1.5",
+          "body": "Release notes", "draft": false, "prerelease": false,
+          "published_at": "2026-11-12T08:00:00Z",
+          "html_url": "https://github.com/tfcup/TRClick/releases/tag/v0.1.5",
+          "assets": [{
+            "id": 2, "name": "TRClick-v0.1.5.app.zip", "size": 1024,
+            "browser_download_url": "https://github.com/tfcup/TRClick/releases/download/v0.1.5/TRClick-v0.1.5.app.zip",
+            "content_type": "application/zip"
+          }]
+        }
+        """
+        let data = Data((scenario == "invalid-json" ? "invalid-json" : manifest).utf8)
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: data)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
 }

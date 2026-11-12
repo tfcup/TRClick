@@ -91,7 +91,7 @@ class UpdatePreferences: ObservableObject {
     }
 }
 
-// MARK: - GitHub API 服务
+// MARK: - GitHub 发布服务
 
 /// 一次更新检查的结果。
 ///
@@ -105,31 +105,60 @@ enum UpdateCheckResult {
     case failed(String)
 }
 
+nonisolated enum UpdateCheckError: LocalizedError {
+    case invalidResponse
+    case httpStatus(Int)
+    case invalidManifest
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidResponse:
+            return AppLocalization.localized("The update server did not return a valid HTTP response.")
+        case .httpStatus(404):
+            return AppLocalization.localized("Update information is not available yet. Please open the release page to check for updates.")
+        case .httpStatus(let status):
+            return String(format: AppLocalization.localized("The update server returned HTTP %ld. Please try again later."), status)
+        case .invalidManifest:
+            return AppLocalization.localized("The update information is invalid. Please open the release page to download manually.")
+        }
+    }
+}
+
 class GitHubReleaseChecker {
     private let owner: String
     private let repo: String
+    private let session: URLSession
     
-    init(owner: String, repo: String) {
+    init(owner: String, repo: String, session: URLSession = .shared) {
         self.owner = owner
         self.repo = repo
+        self.session = session
     }
     
-    // 获取最新release
+    /// 从最新正式版附件读取发布清单，避免匿名 REST API 的共享 IP 限流。
     func fetchLatestRelease() async throws -> GitHubRelease {
-        let url = URL(string: "https://api.github.com/repos/\(owner)/\(repo)/releases/latest")!
-        print(url)
-        var request = URLRequest(url: url)
-        request.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
+        let url = URL(string: "https://github.com/\(owner)/\(repo)/releases/latest/download/update.json")!
+        // latest 会随正式版发布改变；每次检查都重新获取或验证，避免本地缓存滞后。
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData)
+        request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            throw URLError(.badServerResponse)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw UpdateCheckError.invalidResponse
+        }
+        guard httpResponse.statusCode == 200 else {
+            throw UpdateCheckError.httpStatus(httpResponse.statusCode)
         }
         
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        return try decoder.decode(GitHubRelease.self, from: data)
+        do {
+            return try decoder.decode(GitHubRelease.self, from: data)
+        } catch {
+            throw UpdateCheckError.invalidManifest
+        }
     }
 
     /// 拉仓库的星标数。走 `/repos/{owner}/{repo}`，和 release 是两个端点。
@@ -170,6 +199,15 @@ class GitHubReleaseChecker {
             }
 
             return .upToDate
+        } catch let error as URLError {
+            switch error.code {
+            case .notConnectedToInternet:
+                return .failed(AppLocalization.localized("You appear to be offline. Check your connection and try again."))
+            case .timedOut:
+                return .failed(AppLocalization.localized("The update check timed out. Please try again later."))
+            default:
+                return .failed(error.localizedDescription)
+            }
         } catch {
             return .failed(error.localizedDescription)
         }
