@@ -6,6 +6,7 @@
 //
 
 import AppKit
+import SwiftData
 import SwiftUI
 
 /// 自己持有设置窗口，而不是用 SwiftUI 的 `Window` scene。

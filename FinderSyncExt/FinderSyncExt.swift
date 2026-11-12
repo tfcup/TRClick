@@ -716,11 +716,10 @@ class FinderSyncExt: FIFinderSync, @unchecked Sendable {
 
     /// 当前是否按住 Option。
     ///
-    /// 扩展进程里通常没有自己的 `NSEvent`，所以除了 `NSEvent.modifierFlags`
-    /// 还要查窗口服务器的修饰键状态；沙盒下这两条读取通道都可用。
+    /// Finder 的事件循环在另一个进程中，读取全局修饰键状态而非扩展自身的 currentEvent。
+    /// NSEvent 与窗口服务器的读取通道在沙盒下均可用。
     private func isOptionKeyPressed() -> Bool {
         if NSEvent.modifierFlags.contains(.option) { return true }
-        if let event = NSApp.currentEvent, event.modifierFlags.contains(.option) { return true }
         if CGEventSource.flagsState(.combinedSessionState).contains(.maskAlternate) { return true }
         if CGEventSource.flagsState(.hidSystemState).contains(.maskAlternate) { return true }
         return false
@@ -730,8 +729,7 @@ class FinderSyncExt: FIFinderSync, @unchecked Sendable {
     private func optionKeySnapshot() -> String {
         let combined = CGEventSource.flagsState(.combinedSessionState).contains(.maskAlternate)
         let hid = CGEventSource.flagsState(.hidSystemState).contains(.maskAlternate)
-        let current = NSApp.currentEvent?.modifierFlags.contains(.option)
-        return "NSEvent=\(NSEvent.modifierFlags.contains(.option)) current=\(current.map(String.init) ?? "nil") combined=\(combined) hid=\(hid)"
+        return "NSEvent=\(NSEvent.modifierFlags.contains(.option)) combined=\(combined) hid=\(hid)"
     }
 
     /// 获取触发来源
