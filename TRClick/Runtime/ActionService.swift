@@ -206,7 +206,7 @@ final class ActionService {
 
         // 绕过废纸篓的删除默认必须确认；按住 Option 点击是唯一跳过确认的方式。
         if !optionKeyPressed {
-            guard confirmation.confirmPermanentDelete(paths: authorized) else {
+            guard await confirmation.confirmPermanentDelete(paths: authorized) else {
                 logger.info("用户取消了删除确认，共 \(authorized.count) 项未删除")
                 return
             }

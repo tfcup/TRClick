@@ -47,10 +47,15 @@ final class ActionServiceTests {
         var result = true
         var confirmCalls: [[String]] = []
         var callLog: CallLog?
+        var waitsForResponse = false
+        var pendingResponse: CheckedContinuation<Bool, Never>?
 
-        func confirmPermanentDelete(paths: [String]) -> Bool {
+        func confirmPermanentDelete(paths: [String]) async -> Bool {
             confirmCalls.append(paths)
             callLog?.steps.append("confirmation")
+            if waitsForResponse {
+                return await withCheckedContinuation { pendingResponse = $0 }
+            }
             return result
         }
     }
@@ -153,6 +158,38 @@ final class ActionServiceTests {
 
         #expect(!FileManager.default.fileExists(atPath: file.path))
         #expect(confirmation.confirmCalls.isEmpty)
+    }
+
+    @Test(arguments: [true, false])
+    func deletionWaitsForTheConfirmationResponse(shouldDelete: Bool) async throws {
+        let (dir, file) = try makeTempFile()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let permission = MockPermission()
+        permission.hasAccessResult = true
+        let confirmation = MockConfirmation()
+        confirmation.waitsForResponse = true
+        let service = ActionService(state: MockState(), permission: permission, confirmation: confirmation)
+        let deletion = Task { @MainActor in
+            await service.deleteFoldorFile([file.path], "ctx-items")
+        }
+        defer {
+            confirmation.pendingResponse?.resume(returning: false)
+            confirmation.pendingResponse = nil
+            deletion.cancel()
+        }
+
+        let deadline = Date().addingTimeInterval(5)
+        while confirmation.pendingResponse == nil && Date() < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let response = try #require(confirmation.pendingResponse)
+        #expect(FileManager.default.fileExists(atPath: file.path))
+        #expect(confirmation.confirmCalls == [[file.path]])
+
+        confirmation.pendingResponse = nil
+        response.resume(returning: shouldDelete)
+        await deletion.value
+        #expect(FileManager.default.fileExists(atPath: file.path) == !shouldDelete)
     }
 
     @Test func authorizationIsRequestedBeforeConfirmation() async throws {
