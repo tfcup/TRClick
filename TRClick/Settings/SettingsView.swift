@@ -136,9 +136,20 @@ struct SettingsView: View {
             self.sidebar
         } detail: {
             self.detailView
+                // 标题属于内容列，避免挤在左上角的窗口控制按钮旁。
+                .toolbar {
+                    if #available(macOS 26.0, *) {
+                        ToolbarItem(placement: .navigation) {
+                            pageTitle
+                        }
+                        .sharedBackgroundVisibility(.hidden)
+                    } else {
+                        ToolbarItem(placement: .navigation) {
+                            pageTitle
+                        }
+                    }
+                }
         }
-        .navigationTitle(AppLocalization.localized(selectedTab.rawValue))
-        .background(Color(NSColor.windowBackgroundColor))
         // A failed write used to be invisible: the change stayed on screen but was
         // never stored, so the only way to notice was losing it on the next launch.
         .alert(
@@ -152,6 +163,15 @@ struct SettingsView: View {
         } message: {
             Text(appState.lastSaveError ?? "")
         }
+    }
+
+    /// 与分组表单中的文字对齐，页面标题在工具栏中保持纯文本样式。
+    private var pageTitle: some View {
+        Text(appLocalized: selectedTab.rawValue)
+            .font(.headline)
+            .lineLimit(1)
+            .padding(.leading, 16)
+            .accessibilityAddTraits(.isHeader)
     }
 
     func getAppVersion() -> String {

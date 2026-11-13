@@ -53,7 +53,12 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         let window = NSWindow(contentViewController: hosting)
         window.delegate = self
         window.title = AppLocalization.localized("Settings")
-        window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+        window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+        // 保留系统窗口按钮，标题区与分栏背景衔接；页面标题交给右侧原生工具栏。
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.toolbarStyle = .unified
+        window.titlebarSeparatorStyle = .none
         window.isReleasedWhenClosed = false
         window.hidesOnDeactivate = false
         window.contentMinSize = NSSize(width: 700, height: 480)
