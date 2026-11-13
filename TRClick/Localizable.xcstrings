@@ -1,6 +1,41 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "The update was installed, but automatic restart could not be started: %@. Quit TRClick and reopen it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The update was installed, but automatic restart could not be started: %@. Quit TRClick and reopen it."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新已安装，但无法启动自动重启：%@。请完全退出 TRClick 后重新打开。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La actualización se instaló, pero no se pudo iniciar el reinicio automático: %@. Cierra TRClick por completo y vuelve a abrirlo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La mise à jour est installée, mais le redémarrage automatique n’a pas pu être lancé : %@. Quittez TRClick, puis rouvrez l’application."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新はインストールされましたが、自動再起動を開始できませんでした：%@。TRClick を完全に終了してから、再度開いてください。"
+          }
+        }
+      }
+    },
     "The update server did not return a valid HTTP response.": {
       "extractionState": "manual",
       "localizations": {

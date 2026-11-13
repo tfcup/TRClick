@@ -80,6 +80,54 @@ struct UpdaterTests {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "TRClick"
     }
 
+    @Test(arguments: [true, false])
+    func relaunchWaitsForOldProcessAndPreservesTheApplicationPath(oldProcessRunning: Bool) async throws {
+        let manager = FileManager.default
+        let root = manager.temporaryDirectory.appendingPathComponent("TRClick-relaunch-\(UUID())")
+        try manager.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? manager.removeItem(at: root) }
+        let opener = root.appendingPathComponent("test opener 'quoted'.sh")
+        let received = URL(fileURLWithPath: opener.path + ".received")
+        try Data("#!/bin/sh\nprintf '%s' \"$1\" > \"$0.received\"\n".utf8).write(to: opener)
+        try manager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: opener.path)
+        let app = root.appendingPathComponent("TRClick 'quoted' $version 新版.app")
+
+        let oldProcess = Process()
+        oldProcess.executableURL = URL(fileURLWithPath: "/bin/sleep")
+        oldProcess.arguments = ["30"]
+        try oldProcess.run()
+        defer {
+            if oldProcess.isRunning { oldProcess.terminate() }
+            oldProcess.waitUntilExit()
+        }
+        if !oldProcessRunning {
+            oldProcess.terminate()
+            oldProcess.waitUntilExit()
+        }
+
+        let relaunch = try UpdateManager.startRelaunch(appURL: app, after: oldProcess.processIdentifier, openerURL: opener)
+        defer {
+            if relaunch.isRunning { relaunch.terminate() }
+            relaunch.waitUntilExit()
+        }
+        if oldProcessRunning {
+            try await Task.sleep(for: .milliseconds(200))
+            #expect(relaunch.isRunning)
+            #expect(!manager.fileExists(atPath: received.path))
+            oldProcess.terminate()
+            oldProcess.waitUntilExit()
+        }
+
+        let deadline = Date().addingTimeInterval(5)
+        while relaunch.isRunning && Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(!relaunch.isRunning)
+        guard !relaunch.isRunning else { return }
+        #expect(relaunch.terminationStatus == 0)
+        #expect(try String(contentsOf: received, encoding: .utf8) == app.path)
+    }
+
     private func makeApp(in directory: URL, version: String, identifier: String? = nil) throws -> URL {
         let app = directory.appendingPathComponent("\(appName).app")
         let contents = app.appendingPathComponent("Contents")

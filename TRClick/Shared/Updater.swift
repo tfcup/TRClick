@@ -257,6 +257,7 @@ class UpdateManager: ObservableObject {
     private let githubChecker: GitHubReleaseChecker
     private let preferences: UpdatePreferences
     private let currentVersion: String
+    private var restartPending = false
     /// 存下来只为拼仓库/Issues 地址，别处不再硬编码 URL。
     private let owner: String
     private let repo: String
@@ -378,15 +379,15 @@ class UpdateManager: ObservableObject {
         }
         
         isDownloading = true
-        var downloadedURL: URL?
-        var extractedAppURL: URL?
-        defer {
-            isDownloading = false
-            if let downloadedURL { try? FileManager.default.removeItem(at: downloadedURL) }
-            if let extractedAppURL { try? FileManager.default.removeItem(at: extractedAppURL.deletingLastPathComponent()) }
-        }
+        defer { isDownloading = false }
         
         do {
+            var downloadedURL: URL?
+            var extractedAppURL: URL?
+            defer {
+                if let downloadedURL { try? FileManager.default.removeItem(at: downloadedURL) }
+                if let extractedAppURL { try? FileManager.default.removeItem(at: extractedAppURL.deletingLastPathComponent()) }
+            }
             // 1. 下载 ZIP 文件
             let archiveURL = try await downloadAsset(asset: appZipAsset)
             downloadedURL = archiveURL
@@ -398,13 +399,13 @@ class UpdateManager: ObservableObject {
             // 3. 安装应用到应用程序目录
             try await installApplication(appURL: appURL)
             
-            // 只有完整安装成功才显示完成提示；临时文件由 defer 统一清理。
-            showInstallationCompleteAlert()
-            
         } catch {
             updateError = String(format: AppLocalization.localized("Installation failed: %@"), error.localizedDescription)
+            return
         }
-        
+
+        // 安装临时文件已清理，之后才允许用户发起退出和重启。
+        showInstallationCompleteAlert()
     }
 
     func downloadAsset(asset: GitHubRelease.Asset) async throws -> URL {
@@ -569,29 +570,63 @@ class UpdateManager: ObservableObject {
         
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
-            // 启动新应用并退出当前应用
-            launchNewApplicationAndExit()
+            requestRestart()
         }
     }
 
-    // MARK: - 启动新应用并退出
+    // MARK: - 退出后重启
 
-    private func launchNewApplicationAndExit() {
+    private func requestRestart() {
         let fileManager = FileManager.default
         let applicationsURL = fileManager.urls(for: .applicationDirectory, in: .localDomainMask).first!
         let currentAppName = Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "TRClick"
         let newAppURL = applicationsURL.appendingPathComponent("\(currentAppName).app")
-        
-        let configuration = NSWorkspace.OpenConfiguration()
-        NSWorkspace.shared.openApplication(at: newAppURL, configuration: configuration) { _, error in
-            if error != nil {
-                print("启动新应用失败，可能需要手动启动")
-            }
-            // 无论如何都退出当前应用（切回主线程）
-            Task { @MainActor in
-                NSApp.terminate(nil)
-            }
+
+        do {
+            try Self.startRelaunch(appURL: newAppURL, after: ProcessInfo.processInfo.processIdentifier)
+            restartPending = true
+            showUpdateSheet = false
+        } catch {
+            updateError = String(
+                format: AppLocalization.localized("The update was installed, but automatic restart could not be started: %@. Quit TRClick and reopen it."),
+                error.localizedDescription
+            )
         }
+    }
+
+    /// 更新弹窗彻底关闭后再退出，避免模态窗口影响终止；普通关闭弹窗不会退出应用。
+    func finishPendingRestart() {
+        guard restartPending else { return }
+        restartPending = false
+        NSApp.terminate(nil)
+    }
+
+    /// 启动独立的短生命周期进程，等待旧 PID 结束后再打开应用，避免复用旧实例。
+    /// openerURL 可替换为临时命令，以便测试执行顺序而不启动真实应用。
+    @discardableResult
+    static func startRelaunch(
+        appURL: URL,
+        after processID: Int32,
+        openerURL: URL = URL(fileURLWithPath: "/usr/bin/open")
+    ) throws -> Process {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        // 路径作为独立参数传入，不拼接到 shell 代码中，保留空格、引号和其他特殊字符。
+        process.arguments = [
+            "-c",
+            """
+            while kill -0 "$1" 2>/dev/null; do
+                /bin/sleep 0.1
+            done
+            exec "$2" "$3"
+            """,
+            "TRClick-relaunch", String(processID), openerURL.path, appURL.path,
+        ]
+        process.standardInput = FileHandle.nullDevice
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try process.run()
+        return process
     }
 
     // 忽略当前可用更新

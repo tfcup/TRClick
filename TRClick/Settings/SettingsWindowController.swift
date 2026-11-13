@@ -70,7 +70,9 @@ struct SettingsRootView: View {
     var body: some View {
         SettingsView()
             .frame(minWidth: 700, minHeight: 480)
-            .sheet(isPresented: $updateManager.showUpdateSheet) {
+            .sheet(isPresented: $updateManager.showUpdateSheet, onDismiss: {
+                updateManager.finishPendingRestart()
+            }) {
                 UpdateView(updateManager: updateManager)
             }
     }
