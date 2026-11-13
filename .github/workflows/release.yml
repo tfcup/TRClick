@@ -175,9 +175,17 @@ jobs:
           RELEASE_ID: ${{ steps.release.outputs.id }}
         run: |
           set -euo pipefail
-          # 复用发布元数据格式；草稿尚无发布时间，清单记录本次公开发布的时间。
+          # 草稿元数据的页面和附件链接可能含 untagged-*，公开后会失效。
+          # 用本次构建的正式标签生成永久链接，保留其余发布元数据。
           gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
-            --jq '.draft = false | .published_at = (now | todate)' > update.json
+            | jq --arg base "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases" \
+                 --arg tag "$GITHUB_REF_NAME" '
+                .draft = false
+                | .published_at = (now | todate)
+                | .html_url = ($base + "/tag/" + ($tag | @uri))
+                | .assets |= map(.browser_download_url =
+                    ($base + "/download/" + ($tag | @uri) + "/" + (.name | @uri)))
+              ' > update.json
           gh release upload "$GITHUB_REF_NAME" update.json --repo "$GITHUB_REPOSITORY" --clobber
           gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false
 
