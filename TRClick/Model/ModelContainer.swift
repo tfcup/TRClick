@@ -2,8 +2,6 @@
 //  ModelContainer.swift
 //  TRClick
 //
-//  Created by 李旭 on 2025/10/3.
-//
 
 import Foundation
 import SwiftData

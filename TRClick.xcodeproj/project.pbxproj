@@ -48,10 +48,8 @@
 		5C8A28DA2F83D65900FE687C /* TRClick.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TRClick.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C8A28E92F83D65B00FE687C /* TRClickTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TRClickTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C8A29182F83D74A00FE687C /* FinderSyncExt.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FinderSyncExt.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		5C969FB12F8A494600D022F8 /* CLAUDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CLAUDE.md; sourceTree = "<group>"; };
 		5C969FB22F8A494600D022F8 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		5C969FB32F8A494600D022F8 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		5C969FC82F8A496000D022F8 /* git-branch-strategy.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "git-branch-strategy.md"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -141,9 +139,7 @@
 				5C8A29192F83D74A00FE687C /* FinderSyncExt */,
 				5C8A29302F83D85000FE687C /* Shared */,
 				5C8A28DB2F83D65900FE687C /* Products */,
-				5C969FB12F8A494600D022F8 /* CLAUDE.md */,
 				5C969FB22F8A494600D022F8 /* LICENSE */,
-				5C969FCE2F8A496000D022F8 /* specs */,
 				5C969FB32F8A494600D022F8 /* README.md */,
 			);
 			sourceTree = "<group>";
@@ -156,22 +152,6 @@
 				5C8A29182F83D74A00FE687C /* FinderSyncExt.appex */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		5C969FC92F8A496000D022F8 /* contracts */ = {
-			isa = PBXGroup;
-			children = (
-				5C969FC82F8A496000D022F8 /* git-branch-strategy.md */,
-			);
-			path = contracts;
-			sourceTree = "<group>";
-		};
-		5C969FCE2F8A496000D022F8 /* specs */ = {
-			isa = PBXGroup;
-			children = (
-				5C969FC92F8A496000D022F8 /* contracts */,
-			);
-			path = specs;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

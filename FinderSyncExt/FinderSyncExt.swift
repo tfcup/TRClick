@@ -2,8 +2,6 @@
 //  FinderSyncExt.swift
 //  FinderSyncExt
 //
-//  Created by luke on 2026/4/6.
-//
 
 import Cocoa
 import FinderSync
@@ -35,18 +33,6 @@ class FinderSyncExt: FIFinderSync, @unchecked Sendable {
 
     /// 文件类型图标提供者
     private let iconProvider = FileTypeIconProvider.shared
-
-    /// 无效/旧版图标名 → SF Symbol 映射
-    private let iconFallbackMap: [String: String] = [
-        "icon-file-json": "curlybraces",
-        "icon-file-txt": "doc.text",
-        "icon-file-md": "doc.richtext",
-        "icon-file-docx": "doc.richtext.fill",
-        "icon-file-pptx": "rectangle.on.rectangle.fill",
-        "icon-file-xlsx": "tablecells",
-        "document": "doc",
-        "apps.iphone.badge.checkmark": "square.grid.2x2",
-    ]
 
     /// 消息管理器
     private let messager = Messager.shared
@@ -100,7 +86,7 @@ class FinderSyncExt: FIFinderSync, @unchecked Sendable {
     /// TRClick's app icon (#158) — a trade-off, not an oversight: a sandboxed
     /// extension cannot read a volume root (`/Volumes` is readable, `/Volumes/<a
     /// volume>` is not), so it cannot discover the volume's contents to observe
-    /// anything narrower. See specs/external-volumes-observation.md.
+    /// anything narrower.
     private func setupObservingDirectories() {
         // Finder Sync requires an initial set during extension startup.
         FIFinderSyncController.default().directoryURLs = [URL(fileURLWithPath: "/")]
@@ -375,23 +361,6 @@ class FinderSyncExt: FIFinderSync, @unchecked Sendable {
     /// 加载 SF Symbol，缓存按名称、尺寸与外观区分。
     private func templateSymbol(_ name: String) -> NSImage? {
         MenuSymbolIcon.image(named: name)
-    }
-
-    /// 从 Assets 或 SF Symbol 加载图标（带缓存）
-    private func loadIcon(named iconName: String, accessibilityDescription description: String) -> NSImage? {
-        let cacheKey = "load:\(iconName)"
-        if let cached = iconCache[cacheKey] { return cached }
-        if let icon = NSImage(named: iconName) {
-            // Assets 位图不受系统外观影响，可以缓存
-            iconCache[cacheKey] = icon
-            return icon
-        }
-        // SF Symbol 兜底：MenuSymbolIcon 使用外观感知缓存。
-        if let icon = templateSymbol(iconName) { return icon }
-        if let fallback = iconFallbackMap[iconName] {
-            return templateSymbol(fallback)
-        }
-        return nil
     }
 
     /// 构建并返回 Finder 上下文菜单
@@ -764,26 +733,5 @@ class FinderSyncExt: FIFinderSync, @unchecked Sendable {
         }
 
         return []
-    }
-}
-
-// MARK: - NSMenu Extension
-
-extension NSMenu {
-    /// 添加菜单分组标题（带分隔符）
-    func addSection(_ title: String) {
-        let header = NSMenuItem.separator()
-        self.addItem(header)
-
-        let sectionHeader = NSMenuItem(title: title, action: nil, keyEquivalent: "")
-        sectionHeader.isEnabled = false
-        self.addItem(sectionHeader)
-    }
-
-    /// 添加菜单分组标题（无分隔符，仅标题）
-    func addSectionHeader(_ title: String) {
-        let sectionHeader = NSMenuItem(title: title, action: nil, keyEquivalent: "")
-        sectionHeader.isEnabled = false
-        self.addItem(sectionHeader)
     }
 }

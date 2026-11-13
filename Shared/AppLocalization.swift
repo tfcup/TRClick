@@ -2,8 +2,6 @@
 //  AppLocalization.swift
 //  TRClick
 //
-//  Created by Codex on 2026/7/3.
-//
 
 import Foundation
 import SwiftUI

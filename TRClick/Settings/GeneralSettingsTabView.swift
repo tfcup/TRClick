@@ -2,8 +2,6 @@
 //  GeneralSettingsTabView.swift
 //  TRClick
 //
-//  Created by 李旭 on 2024/4/10.
-//
 
 import AppKit
 import Cocoa
@@ -137,10 +135,6 @@ struct GeneralSettingsTabView: View {
 
         // 辅助功能权限检测
         accessibilityStatus = PermissionChecker.hasAccessibilityPermission() ? .enabled : .disabled
-    }
-
-    private func hasAccessibilityPermission() -> Bool {
-        return PermissionChecker.hasAccessibilityPermission()
     }
 
     // MARK: - 权限设置打开

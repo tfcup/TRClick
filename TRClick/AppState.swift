@@ -2,7 +2,7 @@
 //  AppState.swift
 //  TRClick
 //
-//  运行时状态：持有配置数据的内存快照、折叠开关、权限管理器。
+//  运行时状态：持有配置数据的内存快照和菜单显示设置。
 //  配置持久化（SwiftData load/save）已抽到 ConfigService。
 //
 
@@ -23,47 +23,27 @@ class AppState: ObservableObject, ActionStateProviding {
     @Published var apps: [OpenWithApp] = []
     @Published var actions: [RCAction] = []
     @Published var newFiles: [NewFile] = []
-    @Published var inExt: Bool
 
-    // 折叠开关状态 - 每个分类独立控制
-    //
-    // 全部存在 App Group 里，和 showMenuBarExtra 一致，全项目只剩一个 store。
-    // 注意收益仅止于"不再有两个 store"：扩展并不读这些键，它拿到的是 MenuService
-    // 算好的 MenuConfigPayload，所以这不是功能性改进，别高估它。
-    //
-    // 它们原本在 UserDefaults.standard，靠 init 里那一次 migrateLayoutToggles 搬过来。
+    // 各分类独立保存折叠状态；.group 是主程序 UserDefaults.standard 的别名。
+    // 扩展通过 MenuConfigPayload 接收这些设置，不直接读取偏好文件。
     @AppStorage("foldAppsMenu", store: .group) var foldAppsMenu: Bool = false
     @AppStorage("foldActionsMenu", store: .group) var foldActionsMenu: Bool = false
     @AppStorage("foldNewFileMenu", store: .group) var foldNewFileMenu: Bool = true
 
     /// 应用图标样式：0=无图标 1=简单图标（默认） 2=原始图标。
-    /// 存在 App Group 里，扩展通过 MenuConfigPayload.iconStyle 拿到。
+    /// 保存在主程序偏好中，扩展通过 MenuConfigPayload.iconStyle 接收。
     @AppStorage("appIconStyle", store: .group) var appIconStyle: Int = RCAppIconStyle.simple.rawValue
-
-    // 菜单栏显示走 TRClickApp / GeneralSettingsTabView 里的那份（store: .group）。
-    // 这里曾有一份重复声明，没有任何地方读它；两份 store 不同，留着就是个陷阱。
 
     /// 配置持久化服务
     let configService = ConfigService()
 
-    /// Layout toggles that used to live in `UserDefaults.standard`.
-    ///
-    /// Listed by name because the migration has to find them in the old store, and
-    /// because renaming one without updating this list would silently strand the
-    /// user's value there.
+    /// 旧版布局偏好的键名，迁移时保持原值与默认值的区别。
     nonisolated static let layoutToggleKeys = [
         "foldAppsMenu", "foldActionsMenu", "foldNewFileMenu",
     ]
 
-    /// Moves the layout toggles into the shared group, once.
-    ///
-    /// Splitting these across two stores is the defect this fixes. It needs a
-    /// migration rather than a plain store swap because the old values would
-    /// otherwise become invisible and every switch would fall back to its
-    /// declaration default.
-    ///
-    /// Takes both stores explicitly so a test can drive it with throwaway suites
-    /// rather than the real ones.
+    /// 迁移旧布局偏好，保留目标存储中已有的值。
+    /// 存储显式传入以便隔离测试；当前 .group 与 .standard 相同，不会改写已有值。
     nonisolated static func migrateLayoutToggles(from old: UserDefaults, to new: UserDefaults) {
         for key in layoutToggleKeys {
             guard new.object(forKey: key) == nil, let existing = old.object(forKey: key) else { continue }
@@ -72,10 +52,9 @@ class AppState: ObservableObject, ActionStateProviding {
         }
     }
 
-    init(inExt: Bool = false) {
+    init() {
         // Before anything reads the switches above.
         Self.migrateLayoutToggles(from: .standard, to: .group)
-        self.inExt = inExt
         Task { @MainActor in
             logger.debug("start load")
             refresh()

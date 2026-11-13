@@ -156,13 +156,6 @@ enum MenuTrigger: String, Codable {
     case toolbar = "toolbar"
 }
 
-/// 项目类型（文件/文件夹）
-enum ItemType: String, Codable {
-    case file = "file"
-    case folder = "folder"
-    case unknown = "unknown"
-}
-
 // MARK: - 消息结构
 
 /// 主程序发送给 Extension 的消息（带签名）

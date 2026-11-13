@@ -2,8 +2,6 @@
 //  AppsSettingsTabView.swift
 //  TRClick
 //
-//  Created by 李旭 on 2024/11/18.
-//
 
 import AppKit
 import Foundation

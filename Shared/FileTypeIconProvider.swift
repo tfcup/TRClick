@@ -2,8 +2,6 @@
 //  FileTypeIconProvider.swift
 //  TRClick
 //
-//  Created by Claude on 2026/06/27.
-//
 
 import AppKit
 import UniformTypeIdentifiers

@@ -2,8 +2,6 @@
 //  TRClickApp.swift
 //  TRClick
 //
-//  Created by 李旭 on 2024/4/4.
-//
 import AppKit
 import ApplicationServices
 import Foundation
@@ -59,10 +57,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     lazy var appState: AppState = .shared
     private var pluginActivity = PeerActivity()
     var pluginRunning: Bool { pluginActivity.isActive() }
-    var heartBeatCount = 0
 
     let messager = Messager.shared
-    var showMenuBarExtra = UserDefaults.group.bool(forKey: Key.showMenuBarExtra)
 
     override init() {
         super.init()

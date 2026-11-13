@@ -2,8 +2,6 @@
 //  Constants.swift
 //  TRClick
 //
-//  Created by 李旭 on 2024/9/25.
-//
 
 import Foundation
 

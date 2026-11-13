@@ -1,157 +1,98 @@
+# TRClick
 
-[![](./RClick/Assets.xcassets/AppIcon.appiconset/AppIcon@1x.png)](https://github.com/wflixu/RClick/releases)
+个人自用的 macOS Finder 右键菜单扩展，通过菜单栏应用管理配置。
 
-# RClick
+[下载最新版本](https://github.com/tfcup/TRClick/releases/latest) · [反馈问题](https://github.com/tfcup/TRClick/issues)
 
-[![Swift 6.2](https://img.shields.io/badge/Swift-6.2-ED523F.svg?style=flat)](https://swift.org/)
-[![SwiftUI](https://img.shields.io/badge/SwiftUI-✓-orange)](https://developer.apple.com/xcode/swiftui/)
-[![macOS 15.6+](https://img.shields.io/badge/macOS_15.6+-Compatible-green)](https://www.apple.com/macos/macos-sequoia/)
-[![Xcode 26+](https://img.shields.io/badge/Xcode-26%2B-blue)](https://developer.apple.com/xcode/)
-[![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![GitHub release](https://img.shields.io/github/v/release/wflixu/RClick)](https://github.com/wflixu/RClick/releases)
-[![GitHub downloads](https://img.shields.io/github/downloads/wflixu/RClick/total)](https://github.com/wflixu/RClick/releases)
+## 功能
 
-Enhance your macOS Finder context menu with custom actions. Built with Swift 6.2 and SwiftUI for macOS 15.6+. Full dark mode support with adaptive icons.
+- 用指定应用打开文件或文件夹，支持应用预设、自定义启动参数和环境变量。
+- 分别控制应用在 Finder 工具栏菜单、右键菜单中的可见性。
+- 复制绝对路径或文件名。
+- 彻底删除文件或文件夹：默认确认，按住 Option 打开菜单可跳过确认。
+- 新建 TXT、Markdown、JSON、DOCX、PPTX、XLSX、Pages、Keynote、Numbers 文件。
+- 添加自定义文件类型、模板和默认打开应用。
+- 调整菜单顺序、分类折叠和应用图标样式。
+- 开机启动、手动检查更新，支持中、英、日、西、法五种语言。
 
-## 🚀 Features
+## 环境要求
 
-- [x] **Open with External App** — Open files or directories with any installed application, with support for custom arguments and environment variables. Ships with presets for popular editors, terminals and IDEs, per-app visibility for the toolbar and context menus, and none/simple/original icon styles.
-- [x] **Copy Path / File Name** — Copy the full path or just the file name of the selected item to the clipboard.
-- [x] **Delete Direct** — Delete files or folders directly, bypassing Trash. RClick asks for confirmation first; hold **Option** while choosing the action to skip it.
-- [x] **Hide / Unhide** — Toggle file visibility in Finder.
-- [x] **AirDrop** — Share files instantly via AirDrop.
-- [x] **Create New Files** — Generate new files from templates directly in Finder. Supports `.txt`, `.json`, `.md`, `.docx`, `.pptx`, `.xlsx`, as well as Apple iWork formats: `.pages`, `.key`, `.numbers`.
-- [x] **Quick Access Folders** — Pin frequently used directories to the right-click menu.
-- [x] **Terminal-aware Opening** — Terminal presets hand the containing folder to the app by default, with an automatic/on/off override per app.
-- [x] **Dark Mode** — Full light/dark appearance support with adaptive icons and SF Symbols.
+- macOS 15.6 或更新版本。
+- GitHub Releases 中的安装包面向 Apple Silicon（arm64）。
+- 源码构建需要 Xcode 26 或更新版本，支持 Swift 6.2。
 
-## 📱 More Apps
+## 安装与首次使用
 
-If RClick is useful to you, here are two other apps I maintain:
+1. 从本仓库的 Releases 下载 DMG，将 `TRClick.app` 拖入 `/Applications`。
+2. 打开应用，在「系统设置 → 通用 → 登录项与扩展」中启用 TRClick Finder 扩展；具体条目名称随 macOS 版本变化，可通过应用「通用」页的按钮进入。
+3. 在设置中添加需要的应用、文件类型，并调整菜单显示方式。
 
-| App | What it does | Download |
-|-----|--------------|----------|
-| [![iMonet icon](images/apps/imonet-icon.png)](https://apps.apple.com/cn/app/imonet/id6770070921?mt=12) **iMonet** | A mouse-first image viewer for macOS. Zoom follows your cursor, with native animated GIF, APNG and WebP playback. | [Mac App Store](https://apps.apple.com/cn/app/imonet/id6770070921?mt=12) |
-| [![LiveCam icon](images/apps/livecam-icon.png)](https://apps.apple.com/cn/app/livecam/id6476108478?mt=12) **LiveCam** | Show your avatar while recording your screen or live streaming, with configurable size, border and shape. | [Mac App Store](https://apps.apple.com/cn/app/livecam/id6476108478?mt=12) |
-
-## 🏗 Architecture
-
-RClick uses a dual-process architecture:
-
-| Component | Description |
-|-----------|-------------|
-| **Main App** (`RClick/`) | SwiftUI menu bar app — manages settings, state, and file operations |
-| **FinderSync Extension** (`FinderSyncExt/`) | Injected into Finder — renders custom context menu items |
-
-Communication between the two processes uses `DistributedNotificationCenter`. Settings are persisted via SwiftData with a shared App Group container.
-
-## 📸 Screenshots
-
-
-![](./images/rclick-v2.0.1-screenshot.png)
-
-
-
-## 📦 Installation
-
-### Download
-
-Get the latest release from the [Releases page](https://github.com/wflixu/RClick/releases).
-
-Download the `.dmg`, open it, and drag **RClick** to your Applications folder.
-
-> **Note:** On first launch, you may need to enable the Finder extension in **System Settings → Privacy & Security → Extensions → Added Extensions**.
-
-### Build from Source
+自用安装包采用 ad-hoc 签名。若 macOS 因隔离属性阻止启动，确认安装包来自本仓库后，可执行：
 
 ```bash
-git clone https://github.com/wflixu/RClick.git
-cd RClick
+xattr -cr /Applications/TRClick.app
+```
+
+应用默认作为菜单栏程序运行。打开设置窗口时显示 Dock 图标，关闭窗口后隐藏；最小化或切换应用时保留图标。关闭设置窗口不会退出程序，退出操作位于菜单栏菜单中。
+
+## 权限与文件操作
+
+- 主应用不启用 App Sandbox；桌面、文稿等受保护位置仍受 macOS 系统权限控制。
+- Finder 扩展必须在系统设置中启用。
+- 新建文件后自动选中并重命名需要辅助功能权限；未授权时文件仍会创建。
+- 「彻底删除」绕过废纸篓，请在确认对话框中核对目标。
+- 开机启动需要将应用安装到 `/Applications`。
+
+## 模板与配置
+
+内置 Office 和 iWork 文件类型使用随应用提供的有效模板。自定义模板会复制到应用的数据目录；可以在「新建文件」设置中更换或清除自定义模板。
+
+| 数据 | 位置 |
+|---|---|
+| 配置数据库 | `~/Library/Application Support/TRClick/TRClickDatabase.sqlite` |
+| 自定义模板 | `~/Library/Application Support/TRClick/Templates/` |
+| 界面偏好 | `UserDefaults.standard`，应用标识为 `com.tfcup.TRClick` |
+
+## 更新
+
+在「关于」页点击「检查更新」。应用从最新正式版的 `update.json` 附件读取版本信息，不依赖匿名 GitHub REST API 的发布查询额度。
+
+更新时下载完整的 `.app.zip`，解压并校验应用包后，整体替换 `/Applications/TRClick.app`。配置数据库和自定义模板保存在应用包之外，升级会保留这些数据。安装完成后需要重启应用。
+
+检查失败时可打开发布页面手动下载；旧版本若无法检查更新，也可以直接安装本仓库的新版本。
+
+发布新版本时推送 `v*` 标签，GitHub Actions 会构建、签名并生成 DMG、应用 ZIP、校验和及更新清单，附件准备完成后再公开发布。
+
+## 源码构建
+
+```bash
+git clone https://github.com/tfcup/TRClick.git
+cd TRClick
 open TRClick.xcodeproj
 ```
 
-- Requires **Xcode 26+** and **macOS 15.6+**
-- Select the **RClick** scheme, then **Product → Build** (⌘B)
-- The FinderSync extension will be automatically registered
-
-### Requirements
-
-| Requirement | Details |
-|-------------|---------|
-| **Folder Access** | Per-folder authorization for file operations (prompted automatically) |
-| **Accessibility** | Required for certain automation features |
-| **Finder Extension** | Must be enabled in System Settings |
-
-## 🔧 Development
+选择 `TRClick` scheme。命令行构建可使用：
 
 ```bash
-# Build
-xcodebuild -project TRClick.xcodeproj -scheme TRClick -destination 'platform=macOS'
-
-# Build for Release
-xcodebuild -project TRClick.xcodeproj -scheme TRClick -configuration Release
+xcodebuild build \
+  -project TRClick.xcodeproj \
+  -scheme TRClick \
+  -configuration Release \
+  -destination 'generic/platform=macOS' \
+  ARCHS=arm64 \
+  CODE_SIGNING_ALLOWED=NO
 ```
 
-### Key Technologies
-- **Swift 6.2** with full concurrency checking
-- **SwiftUI** for all UI components
-- **AppKit** for system integration only (NSWorkspace, NSPasteboard)
-- **SwiftData** for persistence with shared container
-- **FinderSync** framework for Finder extension
-- **DistributedNotificationCenter** for IPC
+上面的命令仅编译，不执行发布流程中的 ad-hoc 签名。直接运行或安装构建产物时，需要完成本地签名及扩展注册。
 
-### 🌐 Localization
+本地化检查：
 
-RClick supports five languages with the following priority:
+```bash
+python3 scripts/check-localization.py --languages en zh-Hans ja es fr
+```
 
-| Language | Code | Notes |
-|----------|------|-------|
-| **English** | `en` | Default/base language |
-| **Simplified Chinese** | `zh-Hans` | Primary localization target |
-| **Japanese** | `ja` | Activated when system language is Japanese |
-| **Spanish** | `es` | Activated when system language is Spanish |
-| **French** | `fr` | Activated when system language is French |
+## 许可
 
-**Principles:**
-- Default language is English (also the fallback for unsupported system languages)
-- All string keys are in English in the code, localized via `Localizable.xcstrings`
-- System language is auto-detected — no manual language picker in the app
-- To add a new language, add an entry to `Localizable.xcstrings` and register it in the Xcode project
+本仓库包含修改后的版本，整理日期为 2026-11-13，按 [GPL-3.0](LICENSE) 发布。
 
-## 👥 Contributors
-
-Thanks to all the people who have contributed to RClick!
-
-<a href="https://github.com/wflixu/RClick/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=wflixu/RClick" />
-</a>
-
-Recent contributions:
-
-- **[@SonneFish](https://github.com/SonneFish)** — built-in app presets, per-app visibility and icon styles ([#168](https://github.com/wflixu/RClick/pull/168)); Finder icon-cache and heartbeat performance ([#167](https://github.com/wflixu/RClick/pull/167)); permission status refresh ([#169](https://github.com/wflixu/RClick/pull/169)); quiet offline relaunch and settings reopen ([#170](https://github.com/wflixu/RClick/pull/170))
-- **[@Consciencieux](https://github.com/Consciencieux)** — confirmation before Direct Delete ([#163](https://github.com/wflixu/RClick/pull/163))
-- **[@Juns-g](https://github.com/Juns-g)** — watching mounted volumes so external and network drives show the menu ([#152](https://github.com/wflixu/RClick/pull/152))
-- **[@Dam0rt](https://github.com/Dam0rt)** — French localization ([#149](https://github.com/wflixu/RClick/pull/149))
-- **[@stors789](https://github.com/stors789)** — App Groups provisioning in the release pipeline ([#141](https://github.com/wflixu/RClick/pull/141))
-- **[@EliasMatDev](https://github.com/EliasMatDev)** — Latin American Spanish localization ([#138](https://github.com/wflixu/RClick/pull/138))
-- **[@shoal-rat](https://github.com/shoal-rat)** — Finder observation fix, so the menu appears in every folder ([#126](https://github.com/wflixu/RClick/pull/126))
-- **[@P013onEr](https://github.com/P013onEr)** — string catalogs and trilingual localization ([#120](https://github.com/wflixu/RClick/pull/120)), draggable menu ordering ([#121](https://github.com/wflixu/RClick/pull/121))
-- **[@chunyang-wen](https://github.com/chunyang-wen)** — removed a needless `await` ([#21](https://github.com/wflixu/RClick/pull/21))
-
-## Similar Projects
-
-- [SzContext](https://github.com/RoadToDream/SzContext)
-- [MenuHelper](https://github.com/Kyle-Ye/MenuHelper)
-- [SwiftyMenu](https://github.com/lexrus/SwiftyMenu)
-- [OpenInTerminal](https://github.com/Ji4n1ng/OpenInTerminal)
-
-## 🤝 Contributing
-
-We welcome contributions! Here's how you can help:
-
-- **[Report a Bug](https://github.com/wflixu/RClick/issues/new?template=bug_report.md)** — Found something broken? Let us know.
-- **[Request a Feature](https://github.com/wflixu/RClick/issues/new?template=feature_request.md)** — Have an idea? We'd love to hear it.
-- **[Submit a PR](CONTRIBUTING.md)** — Read our contribution guide to get started.
-- **[Security Policy](SECURITY.md)** — How to responsibly report vulnerabilities.
-
-Please read our [Code of Conduct](CODE_OF_CONDUCT.md) before participating.
+iWork 模板的来源及许可见 [第三方模板许可](TRClick/Resources/iWorkTemplates-LICENSE.txt)。

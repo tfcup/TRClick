@@ -8,16 +8,6 @@
 import Foundation
 import AppKit
 @preconcurrency import ApplicationServices
-import OSLog
-import SwiftUI
-
-// MARK: - Logger
-
-private let logger = Logger(
-    subsystem: Bundle.main.bundleIdentifier ?? "TRClick",
-    category: "PermissionChecker"
-)
-
 // MARK: - 权限检查器
 
 /// 提供辅助功能权限的检测

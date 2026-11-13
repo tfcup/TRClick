@@ -74,11 +74,6 @@ enum AppPresets {
         Dictionary(all.map { ($0.bundleID, $0.symbol) }, uniquingKeysWith: { first, _ in first })
     }()
 
-    /// bundleID → 预设显示名（用于把安装的应用对应回预设名）
-    private static var nameByBundleID: [String: String] {
-        Dictionary(all.map { ($0.bundleID, $0.nameKey) }, uniquingKeysWith: { first, _ in first })
-    }
-
     /// 「简单图标」的 symbol 名缓存：只缓存 bundleID→symbol 查表结果（要打开 Info.plist，
     /// 菜单构建在主线程上，不能每次都读盘）。
     private static let symbolNameCache = LockedSymbolNameCache()
@@ -129,11 +124,6 @@ enum AppPresets {
         }
     }
 
-    /// 应用路径对应的预设显示名（设置页标记「来自预设」时可用，当前仅预留）
-    static func presetName(forAppPath appPath: String) -> String? {
-        guard let bundleID = Bundle(url: URL(fileURLWithPath: appPath))?.bundleIdentifier else { return nil }
-        return nameByBundleID[bundleID]
-    }
 }
 
 /// NSLock 保护的 String? 缓存（nil 也要缓存：未收录应用不必反复读 Info.plist）

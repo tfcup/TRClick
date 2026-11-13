@@ -2,12 +2,9 @@
 //  Up.swift
 //  TRClick
 //
-//  Created by 李旭 on 2025/9/21.
-//
 import SwiftUI
 
 struct UpdateView: View {
-    @Environment(\.dismiss) private var dismiss
     @ObservedObject var updateManager: UpdateManager
     
     var body: some View {

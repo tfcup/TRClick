@@ -2,8 +2,6 @@
 //  RCBase.swift
 //  TRClick
 //
-//  Created by 李旭 on 2024/9/26.
-//
 import AppKit
 import Foundation
 

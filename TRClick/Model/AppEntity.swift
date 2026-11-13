@@ -2,8 +2,6 @@
 //  AppEntity.swift
 //  TRClick
 //
-//  Created by Claude on 2026/01/16.
-//
 
 import SwiftData
 import Foundation

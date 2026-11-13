@@ -12,25 +12,19 @@ import Foundation
 final class RCRuntime {
     static let shared = RCRuntime()
 
-    /// 运行时状态（配置内存快照 + 折叠开关 + 权限管理器）
+    /// 运行时状态（配置内存快照 + 菜单显示设置）
     let state: AppState
-    /// 配置持久化
-    let configService: ConfigService
     /// 菜单构建
     let menuService: MenuService
     /// 权限（直通）
     let permissionService: PermissionService
     /// 动作执行（文件操作）
     let actionService: ActionService
-    /// IPC
-    let messager: Messager
 
     private init() {
         self.state = AppState.shared
-        self.configService = state.configService
         self.permissionService = PermissionService()
         self.menuService = MenuService()
         self.actionService = ActionService(state: state, permission: permissionService, confirmation: AlertDeleteConfirmation())
-        self.messager = Messager.shared
     }
 }

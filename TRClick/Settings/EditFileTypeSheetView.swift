@@ -2,8 +2,6 @@
 //  EditFileTypeSheetView.swift
 //  TRClick
 //
-//  Created by Claude on 2026/06/28.
-//
 
 import AppKit
 import SwiftUI
@@ -26,15 +24,6 @@ struct EditFileTypeSheetView: View {
     @State private var showSelectApp = false
     @State private var showSelectTemplate = false
     @State private var templateError: String?
-
-    private let iconToSF: [String: String] = [
-        "icon-file-json": "curlybraces",
-        "icon-file-txt": "doc.text",
-        "icon-file-md": "doc.richtext",
-        "icon-file-docx": "doc.richtext.fill",
-        "icon-file-pptx": "rectangle.on.rectangle.fill",
-        "icon-file-xlsx": "tablecells",
-    ]
 
     let templatesDir: URL? = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
         .appendingPathComponent("TRClick/Templates")

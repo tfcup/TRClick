@@ -2,8 +2,6 @@
 //  Updater.swift
 //  TRClick
 //
-//  Created by 李旭 on 2025/9/21.
-//
 
 import Combine
 import Foundation
@@ -251,7 +249,6 @@ class UpdateManager: ObservableObject {
     /// 和「检查失败」，弹窗里那张绿色「Up to Date」卡片也因此永远走不到。
     @Published var isUpToDate = false
     @Published var isDownloading = false
-    @Published var downloadProgress: Double = 0
     @Published var showUpdateSheet = false
 
     /// 仓库星标数。nil 表示还没拿到——界面就不显示数字，不占位、不报错。
@@ -381,7 +378,6 @@ class UpdateManager: ObservableObject {
         }
         
         isDownloading = true
-        downloadProgress = 0
         var downloadedURL: URL?
         var extractedAppURL: URL?
         defer {
@@ -457,9 +453,6 @@ class UpdateManager: ObservableObject {
             task.resume()
         }
     }
-
-    // 关联对象键
-    private var DownloadDelegateKey: UInt8 = 0
 
     // MARK: - 解压 APP Zip 文件
 

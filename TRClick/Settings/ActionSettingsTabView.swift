@@ -2,8 +2,6 @@
 //  ActionSettingsView.swift
 //  TRClick
 //
-//  Created by 李旭 on 2024/4/9.
-//
 
 import SwiftUI
 

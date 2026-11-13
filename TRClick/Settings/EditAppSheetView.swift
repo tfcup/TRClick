@@ -2,8 +2,6 @@
 //  EditAppSheetView.swift
 //  TRClick
 //
-//  Created by Claude on 2026/06/28.
-//
 
 import SwiftUI
 

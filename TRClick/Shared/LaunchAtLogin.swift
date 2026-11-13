@@ -2,8 +2,6 @@
 //  LaunchAtLogin.swift
 //  TRClick
 //  from https://github.com/sindresorhus/LaunchAtLogin-Modern
-//  Created by 李旭 on 2024/12/19.
-//
 
 import Foundation
 
@@ -40,16 +38,6 @@ public enum LaunchAtLogin {
         }
     }
 
-    /**
-    Whether the app was launched at login.
-
-    - Important: This property must only be checked in `NSApplicationDelegate#applicationDidFinishLaunching`.
-    */
-    public static var wasLaunchedAtLogin: Bool {
-        let event = NSAppleEventManager.shared().currentAppleEvent
-        return event?.eventID == kAEOpenApplication
-            && event?.paramDescriptor(forKeyword: keyAEPropData)?.enumCodeValue == keyAELaunchedAsLogInItem
-    }
 }
 
 extension LaunchAtLogin {
@@ -64,29 +52,7 @@ extension LaunchAtLogin {
 }
 
 extension LaunchAtLogin {
-    /**
-    This package comes with a `LaunchAtLogin.Toggle` view which is like the built-in `Toggle` but with a predefined binding and label. Clicking the view toggles “launch at login” for your app.
-
-    ```
-    struct ContentView: View {
-        var body: some View {
-            LaunchAtLogin.Toggle()
-        }
-    }
-    ```
-
-    The default label is `"Launch at login"`, but it can be overridden for localization and other needs:
-
-    ```
-    struct ContentView: View {
-        var body: some View {
-            LaunchAtLogin.Toggle {
-                Text("Launch at login")
-            }
-        }
-    }
-    ```
-    */
+    /// 使用自定义标签控制开机启动，并显示需要系统批准或安装位置不正确的提示。
     public struct Toggle<Label: View>: View {
         @ObservedObject private var launchAtLogin = LaunchAtLogin.observable
         private let label: Label
@@ -132,39 +98,6 @@ extension LaunchAtLogin {
                 return nil
             }
         }
-    }
-}
-
-extension LaunchAtLogin.Toggle<Text> {
-    /**
-    Creates a toggle that generates its label from a localized string key.
-
-    This initializer creates a ``Text`` view on your behalf with the provided `titleKey`.
-
-    - Parameters:
-        - titleKey: The key for the toggle's localized title, that describes the purpose of the toggle.
-    */
-    public init(_ titleKey: LocalizedStringKey) {
-        label = Text(titleKey)
-    }
-
-    /**
-    Creates a toggle that generates its label from a string.
-
-    This initializer creates a `Text` view on your behalf with the provided `title`.
-
-    - Parameters:
-        - title: A string that describes the purpose of the toggle.
-    */
-    public init(_ title: some StringProtocol) {
-        label = Text(title)
-    }
-
-    /**
-    Creates a toggle with the default title of `Launch at login`.
-    */
-    public init() {
-        self.init("Launch at login")
     }
 }
 
